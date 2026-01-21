@@ -1,0 +1,9 @@
+class Menu(Base):
+    __tablename__ = "menus"
+
+    id = Column(Integer, primary_key=True)
+    restaurant_id = Column(Integer, ForeignKey("restaurants.id"))
+    name = Column(String, nullable=False)
+    description = Column(String)
+    price = Column(Integer, nullable=False)
+    is_available = Column(Boolean, default=True)
