@@ -1,3 +1,6 @@
+from sqlalchemy import Column, Integer, Boolean, ForeignKey
+from database.db import Base
+
 class Referral(Base):
     __tablename__ = "referrals"
 
