@@ -1,3 +1,6 @@
+from sqlalchemy import Column, Integer, Boolean, ForeignKey, Date
+from database.db import Base
+
 class CookingStatus(Base):
     __tablename__ = "cooking_status"
 
