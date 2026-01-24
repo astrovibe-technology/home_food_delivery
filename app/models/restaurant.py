@@ -1,3 +1,7 @@
+from sqlalchemy import Column, Integer, String, Boolean , DateTime 
+from datetime import datetime
+from database.db import Base
+
 class Restaurant(Base):
     __tablename__ = "restaurants"
 
