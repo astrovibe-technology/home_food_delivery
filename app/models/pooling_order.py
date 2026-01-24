@@ -1,3 +1,6 @@
+from sqlalchemy import Column, Integer, String
+from database.db import Base
+
 class PoolingOrder(Base):
     __tablename__ = "pooling_orders"
 
