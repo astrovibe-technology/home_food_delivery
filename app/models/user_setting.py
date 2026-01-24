@@ -1,3 +1,7 @@
+from sqlalchemy import Column, Integer, Boolean, ForeignKey
+from database.db import Base
+
+
 class UserSettings(Base):
     __tablename__ = "user_settings"
 
