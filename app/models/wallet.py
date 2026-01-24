@@ -1,3 +1,7 @@
+from sqlalchemy import Column, Integer, Boolean, ForeignKey
+from database.db import Base
+
+
 class Wallet(Base):
     __tablename__ = "wallets"
 
