@@ -1,3 +1,8 @@
+from sqlalchemy import Column, Integer, ForeignKey, String, DateTime
+from datetime import datetime
+from database.db import Base
+
+
 class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
 
