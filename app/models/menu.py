@@ -1,3 +1,6 @@
+from sqlalchemy import Column, Integer, String, Boolean , ForeignKey
+from database.db import Base
+
 class Menu(Base):
     __tablename__ = "menus"
 
