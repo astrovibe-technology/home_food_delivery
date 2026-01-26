@@ -58,8 +58,8 @@ def login(email: str, password: str, db: Session = Depends(get_db)):
 
     return {
         "message": "Login successful",
-        "access_token": token,
-        "token_type": "bearer"
+        # "access_token": token,
+        # "token_type": "bearer"
     }
 
 
