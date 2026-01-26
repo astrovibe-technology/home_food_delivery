@@ -13,3 +13,9 @@ class LoginResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class UserRegisterSchema(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
