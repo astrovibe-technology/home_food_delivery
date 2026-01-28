@@ -22,6 +22,7 @@ from models.order import Order
 from models.orderitem import OrderItem
 from models.pooling_order import PoolingOrder
 from models.faq import FAQ
+from models.promocode import PromoCode
 from models.incentive import Incentive
 
 from models.referral import Referral
