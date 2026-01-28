@@ -9,5 +9,7 @@ class Order(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     address_id = Column(Integer, ForeignKey("addresses.id"))
     total_amount = Column(Integer, default=0)
+    discount_amount = Column(Integer, default=0)
+    payable_amount = Column(Integer)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
