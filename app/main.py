@@ -14,6 +14,7 @@ from models.orderitem import OrderItem
 from models.promocode import PromoCode
 from models.shop import Shop
 from models.cooking_dish import CookingDish
+from models.referral import Referral
 
 # Routers
 from routes.user import router as auth_router
@@ -23,6 +24,7 @@ from routes.menu import router as menu_router
 from routes.promocode import router as promocode_router
 from routes.shop import router as shop_router
 from routes.cooking_dish import router as cooking_dish_router
+from routes.referral import router as referral_router
 
 
 from database.db import engine, Base
@@ -38,3 +40,4 @@ app.include_router(menu_router)
 app.include_router(promocode_router)
 app.include_router(shop_router)
 app.include_router(cooking_dish_router)
+app.include_router(referral_router)
