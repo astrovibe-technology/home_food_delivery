@@ -5,7 +5,7 @@ from sqlalchemy import or_
 from database.db import SessionLocal
 from models.user import User
 from database.login import MessageResponse, UserRegisterSchema, LoginSchema
-from lib_tu.utils import verify_password, create_access_token, get_password_hash
+from lib_tu.utils import verify_password, create_access_token, get_password_hash, generate_referral_code
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -23,31 +23,37 @@ def register_user(
     db: Session = Depends(get_db)
 ):
     email = payload.email.lower()
-    phone = payload.phone_number.strip()   
+    phone = payload.phone_number.strip()
 
     existing = db.query(User).filter(
         or_(
             User.email == email,
-            User.phone == phone            
+            User.phone == phone
         )
     ).first()
 
     if existing:
         raise HTTPException(status_code=400, detail="User already exists")
 
+    referral_code = generate_referral_code()
+
     user = User(
         name=payload.name,
         email=email,
         phone=phone,
         password=get_password_hash(payload.password),
-        is_active=True
+        is_active=True,
+        referral_code=referral_code  
     )
 
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    return {"message": "User registered successfully"}
+    return {
+        "message": "User registered successfully",
+        "referral_code": user.referral_code
+    }
 
 
 @router.post("/login")
