@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from database.db import Base  
 
 class User(Base):
@@ -14,3 +14,11 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+
+
+    referral_code = Column(String(20), unique=True, nullable=True)
+    referred_by = Column(Integer, nullable=True)
+    referral_count = Column(Integer, default=0)
+    referral_earnings = Column(Integer, default=0)
