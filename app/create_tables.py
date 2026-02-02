@@ -18,6 +18,9 @@ from models.wallet import Wallet
 from models.promocode import PromoCode
 from models.shop import Shop
 from models.cooking_dish import CookingDish
+from models.unit import DishUnit
+from models.type import Type
+from models.timings import Timing
 
 Base.metadata.create_all(bind=engine)
 print("All tables created")
