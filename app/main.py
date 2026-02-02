@@ -15,16 +15,22 @@ from models.promocode import PromoCode
 from models.shop import Shop
 from models.cooking_dish import CookingDish
 from models.referral import Referral
+from models.unit import DishUnit
+from models.type import Type
+from models.timings import Timing
 
 # Routers
 from routes.user import router as auth_router
-from routes.home import router as home_router
+# from routes.home import router as home_router
 from routes.cart import router as cart_router
 from routes.menu import router as menu_router
 from routes.promocode import router as promocode_router
 from routes.shop import router as shop_router
 from routes.cooking_dish import router as cooking_dish_router
 from routes.referral import router as referral_router
+from routes.unit import router  as unit_router
+from routes.type import router  as type_router
+from routes.timings import router as timings_router
 
 
 from database.db import engine, Base
@@ -34,10 +40,13 @@ Base.metadata.create_all(bind=engine)
 
 
 app.include_router(auth_router)
-app.include_router(home_router)
+# app.include_router(home_router)
 app.include_router(cart_router)
 app.include_router(menu_router)
 app.include_router(promocode_router)
 app.include_router(shop_router)
 app.include_router(cooking_dish_router)
 app.include_router(referral_router)
+app.include_router(unit_router)
+app.include_router(type_router)
+app.include_router(timings_router)
