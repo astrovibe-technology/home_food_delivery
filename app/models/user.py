@@ -12,6 +12,11 @@ class User(Base):
     password = Column(String, nullable=False)
     role = Column(String, default="user")  # user / cook / delivery / admin
     is_active = Column(Boolean, default=True)
+    reset_otp = Column(String, nullable=True)
+    is_otp_verified = Column(Boolean, default=False)
+    otp_expiry = Column(DateTime, nullable=True)
+    is_fake_mail = Column(Boolean, default=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
