@@ -31,6 +31,9 @@ from routes.referral import router as referral_router
 from routes.unit import router  as unit_router
 from routes.type import router  as type_router
 from routes.timings import router as timings_router
+from routes.order import router as orderrouter
+from routes.order_status import router as order_status_router
+
 
 
 from database.db import engine, Base
@@ -50,3 +53,5 @@ app.include_router(referral_router)
 app.include_router(unit_router)
 app.include_router(type_router)
 app.include_router(timings_router)
+app.include_router(orderrouter)
+app.include_router(order_status_router)
