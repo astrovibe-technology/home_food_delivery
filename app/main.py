@@ -18,6 +18,7 @@ from models.referral import Referral
 from models.unit import DishUnit
 from models.type import Type
 from models.timings import Timing
+from models.delivery_incentive import DeliveryIncentive
 
 # Routers
 from routes.user import router as auth_router
@@ -32,6 +33,7 @@ from routes.unit import router  as unit_router
 from routes.type import router  as type_router
 from routes.timings import router as timings_router
 from routes.order import router as orderrouter
+from routes.delivery_incentives import router as delivery_incentives_router
 from routes.order_status import router as order_status_router
 
 
@@ -55,3 +57,4 @@ app.include_router(type_router)
 app.include_router(timings_router)
 app.include_router(orderrouter)
 app.include_router(order_status_router)
+app.include_router( delivery_incentives_router)
