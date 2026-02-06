@@ -21,6 +21,8 @@ from models.cooking_dish import CookingDish
 from models.unit import DishUnit
 from models.type import Type
 from models.timings import Timing
+from models.delivery_incentive import DeliveryIncentive
+
 
 Base.metadata.create_all(bind=engine)
 print("All tables created")
