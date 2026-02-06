@@ -7,6 +7,7 @@ from models.cart import Cart
 from models.cartitem import CartItem
 from models.menu import Menu
 from models.order import Order
+from models.orderitem import OrderItem
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
@@ -139,6 +140,8 @@ def remove_cart_item(item_id: int, db: Session = Depends(get_db)):
 
 @router.post("/checkout")
 def checkout(user_id: int, db: Session = Depends(get_db)):
+
+    # 1️⃣ Get cart
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart:
         raise HTTPException(status_code=400, detail="Cart is empty")
@@ -147,18 +150,42 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
     if not items:
         raise HTTPException(status_code=400, detail="No items in cart")
 
-    # Calculate total
     total = 0
+
+    # 2️⃣ Create order first (empty)
+    order = Order(user_id=user_id, total_amount=0, status="pending")
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+
+    # 3️⃣ Move cart → order_items
     for item in items:
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
-        total += item.quantity * menu.price
+        item_total = item.quantity * menu.price
+        total += item_total
 
-    # Create order
-    order = Order(user_id=user_id, total_amount=total, status="PENDING")
-    db.add(order)
+        order_item = OrderItem(
+            order_id=order.id,
+            menu_id=menu.id,
+            quantity=item.quantity,
+            price=menu.price
+        )
+        db.add(order_item)
 
-    # Clear cart
+    # 4️⃣ Update order total
+    order.total_amount = total
+    order.payable_amount = total
+
+    # 5️⃣ Clear cart
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
+
     db.commit()
 
-    return {"order_id": order.id, "amount": total, "message": "Proceed to payment"}
+    return {
+        "order_id": order.id,
+        "amount": total,
+        "message": "Order placed successfully"
+    }
+
+
+
