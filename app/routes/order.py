@@ -4,7 +4,7 @@ from database.db import SessionLocal
 from models.order import Order
 from models.orderitem import OrderItem
 
-router = APIRouter(prefix="/orders", tags=["Order Status"])
+router = APIRouter(prefix="/orders", tags=["Order"])
 
 
 def get_db():
