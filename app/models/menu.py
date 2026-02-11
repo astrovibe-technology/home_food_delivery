@@ -10,3 +10,5 @@ class Menu(Base):
     description = Column(String)
     price = Column(Integer, nullable=False)
     is_available = Column(Boolean, default=True)
+
+    created_by = Column(Integer, ForeignKey("users.id"))
