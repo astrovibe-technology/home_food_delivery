@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from database.db import Base
 
 class PromoCode(Base):
@@ -9,3 +9,5 @@ class PromoCode(Base):
     discount_type = Column(String)  # FLAT / PERCENT
     discount_value = Column(Integer)  # 50 or 10
     is_active = Column(Boolean, default=True)
+
+    created_by = Column(Integer, ForeignKey("users.id"))
