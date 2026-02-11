@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from database.db import SessionLocal
 from models.menu import Menu
+from models.user import User
 
 router = APIRouter(prefix="/menus", tags=["Menu"])
 
@@ -16,18 +17,24 @@ def get_db():
 
 @router.post("/add")
 def add_menu(
-    # restaurant_id: int,
+    user_id: int,  
     name: str,
     price: int,
     description: str = None,
     db: Session = Depends(get_db)
 ):
+
+   
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
     menu = Menu(
-        # restaurant_id=restaurant_id,
         name=name,
         price=price,
         description=description,
-        is_available=True
+        is_available=True,
+        created_by=user_id  
     )
 
     db.add(menu)
@@ -36,5 +43,6 @@ def add_menu(
 
     return {
         "message": "Menu added successfully",
-        "menu_id": menu.id
+        "menu_id": menu.id,
+        "created_by": user_id
     }
