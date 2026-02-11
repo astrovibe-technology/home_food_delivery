@@ -4,12 +4,14 @@ from sqlalchemy.orm import Session
 from database.db import get_db
 from models.promocode import PromoCode
 from models.order import Order
+from models.user import User
 
 router = APIRouter(prefix="/promocode", tags=["Promocode"])
 
 
 @router.post("/add")
 def add_promo(
+    user_id: int,  
     code: str,
     discount_type: str,
     discount_value: int,
@@ -24,9 +26,10 @@ def add_promo(
 
     promo = PromoCode(
         code=code.upper(),
-        discount_type=discount_type.upper(),  # FLAT / PERCENT
+        discount_type=discount_type.upper(),
         discount_value=discount_value,
-        is_active=True
+        is_active=True,
+        created_by=user_id      
     )
 
     db.add(promo)
@@ -35,7 +38,8 @@ def add_promo(
 
     return {
         "message": "Promo code added successfully",
-        "code": promo.code
+        "code": promo.code,
+        "created_by": promo.created_by
     }
 
 
