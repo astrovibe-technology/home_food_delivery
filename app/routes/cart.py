@@ -28,12 +28,12 @@ def add_to_cart(
     quantity: int = 1,
     db: Session = Depends(get_db)
 ):
-    # Fetch menu by ID
+   
     menu = db.query(Menu).filter(Menu.id == menu_id).first()
     if not menu:
         raise HTTPException(status_code=404, detail="Menu not found")
 
-    # Get or create cart
+   
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart:
         cart = Cart(user_id=user_id)
@@ -41,7 +41,7 @@ def add_to_cart(
         db.commit()
         db.refresh(cart)
 
-    # Check if item already in cart
+  
     item = db.query(CartItem).filter(
         CartItem.cart_id == cart.id,
         CartItem.menu_id == menu.id
@@ -141,7 +141,7 @@ def remove_cart_item(item_id: int, db: Session = Depends(get_db)):
 @router.post("/checkout")
 def checkout(user_id: int, db: Session = Depends(get_db)):
 
-    # 1️⃣ Get cart
+   
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
     if not cart:
         raise HTTPException(status_code=400, detail="Cart is empty")
@@ -151,16 +151,21 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="No items in cart")
 
     total = 0
+    order_items_response = []
 
-    # 2️⃣ Create order first (empty)
-    order = Order(user_id=user_id, total_amount=0, status="pending")
+    
+    order = Order(user_id=user_id, total_amount=0, payable_amount=0, status="pending")
     db.add(order)
     db.commit()
     db.refresh(order)
 
-    # 3️⃣ Move cart → order_items
+    
     for item in items:
+
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
+        if not menu:
+            raise HTTPException(status_code=404, detail=f"Menu id {item.menu_id} not found")
+
         item_total = item.quantity * menu.price
         total += item_total
 
@@ -172,18 +177,29 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
         )
         db.add(order_item)
 
-    # 4️⃣ Update order total
+        
+        order_items_response.append({
+            "menu_id": menu.id,
+            "menu_name": menu.name,
+            "price": menu.price,
+            "quantity": item.quantity,
+            "total": item_total
+        })
+
+    
     order.total_amount = total
     order.payable_amount = total
 
-    # 5️⃣ Clear cart
+    
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
 
     db.commit()
 
     return {
         "order_id": order.id,
-        "amount": total,
+        "status": order.status,
+        "items": order_items_response,
+        "total_amount": total,
         "message": "Order placed successfully"
     }
 
