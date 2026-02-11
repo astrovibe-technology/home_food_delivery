@@ -37,25 +37,44 @@ def get_units(db: Session = Depends(get_db)):
 
 
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import Optional
+
 @router.put("/{unit_id}")
 def update_unit(
     unit_id: int,
-    unit_type: str,
-    measurement: str,
-    quantity: int,
+    unit_type: Optional[str] = None,
+    measurement: Optional[str] = None,
+    quantity: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
     unit = db.query(DishUnit).filter(DishUnit.id == unit_id).first()
     if not unit:
         raise HTTPException(status_code=404, detail="Unit not found")
 
-    unit.unit_type = unit_type.upper()
-    unit.measurement = measurement
-    unit.quantity = quantity
+    # Update only if provided
+    if unit_type is not None:
+        unit.unit_type = unit_type.upper()
+
+    if measurement is not None:
+        unit.measurement = measurement
+
+    if quantity is not None:
+        unit.quantity = quantity
 
     db.commit()
+    db.refresh(unit)
 
-    return {"message": "Unit updated successfully"}
+    return {
+        "message": "Unit updated successfully",
+        "data": {
+            "id": unit.id,
+            "unit_type": unit.unit_type,
+            "measurement": unit.measurement,
+            "quantity": unit.quantity
+        }
+    }
 
 
 
