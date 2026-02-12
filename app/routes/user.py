@@ -24,6 +24,7 @@ def get_db():
 @router.post("/register")
 def register_user(
     payload: UserRegisterSchema,
+    role: str = "user",   
     db: Session = Depends(get_db)
 ):
     email = payload.email.lower()
@@ -47,7 +48,8 @@ def register_user(
         phone=phone,
         password=get_password_hash(payload.password),
         is_active=True,
-        referral_code=referral_code  
+        role=role.lower(),       
+        referral_code=referral_code
     )
 
     db.add(user)
@@ -55,8 +57,9 @@ def register_user(
     db.refresh(user)
 
     return {
-        "message": "User registered successfully",
-        "referral_code": user.referral_code
+        "message": f"{user.role} registered successfully",
+        "referral_code": user.referral_code,
+        "role": user.role
     }
 
 
