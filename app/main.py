@@ -35,6 +35,7 @@ from routes.timings import router as timings_router
 from routes.order import router as orderrouter
 from routes.delivery_incentives import router as delivery_incentives_router
 from routes.order_status import router as order_status_router
+from routes.admin import router as admin_router
 
 
 
@@ -43,7 +44,7 @@ from database.db import engine, Base
 app = FastAPI()
 Base.metadata.create_all(bind=engine)
 
-
+app.include_router(admin_router)
 app.include_router(auth_router)
 # app.include_router(home_router)
 app.include_router(cart_router)
