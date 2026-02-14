@@ -30,3 +30,8 @@ from models.restaurant import Restaurant
 from models.user_setting import UserSettings
 from models.wallet import Wallet
 from models.wallet_transaction import WalletTransaction
+from models.shop import Shop
+from models.timings import Timing
+from models.type import Type
+from models.unit import DishUnit
+from models.location import UserLocation
