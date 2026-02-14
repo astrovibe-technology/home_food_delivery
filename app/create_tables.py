@@ -22,6 +22,7 @@ from models.unit import DishUnit
 from models.type import Type
 from models.timings import Timing
 from models.delivery_incentive import DeliveryIncentive
+from models.location import UserLocation
 
 
 Base.metadata.create_all(bind=engine)
