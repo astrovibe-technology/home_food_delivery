@@ -19,6 +19,7 @@ from models.unit import DishUnit
 from models.type import Type
 from models.timings import Timing
 from models.delivery_incentive import DeliveryIncentive
+from models.location import UserLocation
 
 # Routers
 from routes.user import router as auth_router
@@ -36,6 +37,7 @@ from routes.order import router as orderrouter
 from routes.delivery_incentives import router as delivery_incentives_router
 from routes.order_status import router as order_status_router
 from routes.admin import router as admin_router
+from routes.location import router as location_router
 
 
 
@@ -59,3 +61,4 @@ app.include_router(timings_router)
 app.include_router(orderrouter)
 app.include_router(order_status_router)
 app.include_router( delivery_incentives_router)
+app.include_router(location_router)
