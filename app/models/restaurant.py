@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, Time, DateTime
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from database.db import Base
 
@@ -17,4 +18,5 @@ class Restaurant(Base):
     end_time = Column(Time)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+    orders = relationship("Order", back_populates="restaurant") 
 
