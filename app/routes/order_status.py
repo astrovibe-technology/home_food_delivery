@@ -63,5 +63,40 @@ def get_all_completed_orders(db: Session = Depends(get_db)):
 
 
 
+@router.get("/orders/cancelled")
+def get_all_cancelled_orders(db: Session = Depends(get_db)):
+
+    orders = db.query(Order).filter(
+        Order.status == "cancelled"
+    ).order_by(Order.id.desc()).all()
+
+   
+    if not orders:
+        raise HTTPException(
+            status_code=404,
+            detail="No cancelled orders found"
+        )
+
+    result = []
+
+    for order in orders:
+        item_count = db.query(OrderItem).filter(
+            OrderItem.order_id == order.id
+        ).count()
+
+        result.append({
+            "order_id": order.id,
+            "items": item_count,
+            "amount": order.total_amount,
+            "date": order.created_at,
+            "status": order.status
+        })
+
+    return result
+
+
+
+
+
 
 
