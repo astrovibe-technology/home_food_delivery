@@ -27,7 +27,7 @@ class LocationSchema(BaseModel):
 
 
 @router.post("/")
-def update_location(data: LocationSchema, db: Session = Depends(get_db)):
+def Create_location(data: LocationSchema, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.id == data.user_id).first()
     if not user:
