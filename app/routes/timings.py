@@ -49,6 +49,14 @@ def create_timing(
 @router.get("/")
 def get_timings(db: Session = Depends(get_db)):
     timings = db.query(Timing).all()
+
+    
+    if not timings:
+        raise HTTPException(
+            status_code=404,
+            detail="No data found"
+        )
+
     return [
         {
             "id": t.id,
