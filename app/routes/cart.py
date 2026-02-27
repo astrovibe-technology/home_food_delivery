@@ -69,36 +69,36 @@ def add_to_cart(
 # ----------------------------------- GET -----------------------------------------------
 
 
-@router.get("/{user_id}")
-def view_cart(user_id: int, db: Session = Depends(get_db)):
-    cart = db.query(Cart).filter(Cart.user_id == user_id).first()
-    if not cart:
-        return {"items": [], "total_amount": 0}
+# @router.get("/{user_id}")
+# def view_cart(user_id: int, db: Session = Depends(get_db)):
+#     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
+#     if not cart:
+#         return {"items": [], "total_amount": 0}
 
-    items = db.query(CartItem, Menu).join(Menu, CartItem.menu_id == Menu.id).filter(
-        CartItem.cart_id == cart.id
-    ).all()
+#     items = db.query(CartItem, Menu).join(Menu, CartItem.menu_id == Menu.id).filter(
+#         CartItem.cart_id == cart.id
+#     ).all()
 
-    total = 0
-    data = []
+#     total = 0
+#     data = []
 
-    for item, menu in items:
-        item_total = item.quantity * menu.price
-        total += item_total
-        data.append({
-            "item_id": item.id,
-            "menu_id": menu.id,
-            "menu_name": menu.name,
-            "price": menu.price,
-            "quantity": item.quantity,
-            "total": item_total
-        })
+#     for item, menu in items:
+#         item_total = item.quantity * menu.price
+#         total += item_total
+#         data.append({
+#             "item_id": item.id,
+#             "menu_id": menu.id,
+#             "menu_name": menu.name,
+#             "price": menu.price,
+#             "quantity": item.quantity,
+#             "total": item_total
+#         })
 
-    return {
-        "cart_id": cart.id,
-        "items": data,
-        "total_amount": total
-    }
+#     return {
+#         "cart_id": cart.id,
+#         "items": data,
+#         "total_amount": total
+#     }
 
 
 # ---------------------------------------------- PUT-----------------------
