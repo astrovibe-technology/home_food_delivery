@@ -15,12 +15,11 @@ def get_db():
         db.close()
 
 
-# Allowed flow map
 STATUS_FLOW = {
-    "pending": ["preparing", "cancelled"],
-    "preparing": ["packed", "cancelled"],
-    "packed": ["out_for_delivery", "cancelled"],
-    "out_for_delivery": ["completed"],
+    "pending": ["preparing", "completed", "cancelled"], 
+    "preparing": ["packed", "completed", "cancelled"],
+    "packed": ["out_for_delivery", "completed", "cancelled"],
+    "out_for_delivery": ["completed", "cancelled"],
     "completed": [],
     "cancelled": []
 }
@@ -36,14 +35,21 @@ def update_order_status(order_id: int, new_status: str, db: Session = Depends(ge
     current_status = order.status.lower()
     new_status = new_status.lower()
 
-    # Validate status exists
+
     if new_status not in STATUS_FLOW:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid status. Allowed: {list(STATUS_FLOW.keys())}"
         )
 
-    # Validate flow
+
+    if current_status in ["completed", "cancelled"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot change status once order is '{current_status}'"
+        )
+
+
     if new_status not in STATUS_FLOW[current_status]:
         raise HTTPException(
             status_code=400,
@@ -54,7 +60,7 @@ def update_order_status(order_id: int, new_status: str, db: Session = Depends(ge
     db.commit()
 
     return {
-        "message": "Order status updated",
+        "message": "Order status updated successfully",
         "order_id": order.id,
         "old_status": current_status,
         "new_status": new_status
@@ -67,6 +73,13 @@ def update_order_status(order_id: int, new_status: str, db: Session = Depends(ge
 def get_all_orders(db: Session = Depends(get_db)):
 
     orders = db.query(Order).order_by(Order.id.desc()).all()
+
+    
+    if not orders:
+        raise HTTPException(
+            status_code=404,
+            detail="No data found"
+        )
 
     result = []
 
