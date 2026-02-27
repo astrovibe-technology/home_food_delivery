@@ -80,6 +80,13 @@ def get_all_orders(db: Session = Depends(get_db)):
 
     orders = db.query(Order).join(User).all()
 
+    
+    if not orders:
+        raise HTTPException(
+            status_code=404,
+            detail="Data not found"
+        )
+
     result = []
 
     for order in orders:
@@ -112,6 +119,13 @@ def get_reports(db: Session = Depends(get_db)):
         .order_by(Order.created_at.desc())
         .all()
     )
+
+    # ✅ 404 if no data
+    if not reports:
+        raise HTTPException(
+            status_code=404,
+            detail="Data not found"
+        )
 
     result = []
 
