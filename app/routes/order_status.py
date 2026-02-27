@@ -17,6 +17,13 @@ def get_all_pending_orders(db: Session = Depends(get_db)):
         Order.status == "pending"
     ).order_by(Order.id.desc()).all()
 
+    
+    if not orders:
+        raise HTTPException(
+            status_code=404,
+            detail="No pending orders found"
+        )
+
     result = []
 
     for order in orders:
@@ -36,13 +43,19 @@ def get_all_pending_orders(db: Session = Depends(get_db)):
 
 
 
-
 @router.get("/orders/completed")
 def get_all_completed_orders(db: Session = Depends(get_db)):
 
     orders = db.query(Order).filter(
         Order.status == "completed"
     ).order_by(Order.id.desc()).all()
+
+    
+    if not orders:
+        raise HTTPException(
+            status_code=404,
+            detail="No completed orders found"
+        )
 
     result = []
 
