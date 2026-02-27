@@ -32,6 +32,14 @@ def add_unit(
 @router.get("/")
 def get_units(db: Session = Depends(get_db)):
     units = db.query(DishUnit).all()
+
+   
+    if not units:
+        raise HTTPException(
+            status_code=404,
+            detail="Data not found"
+        )
+
     return units
 
 
