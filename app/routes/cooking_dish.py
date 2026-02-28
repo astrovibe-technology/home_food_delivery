@@ -76,6 +76,26 @@ def create_society_dish(
 
 # ----------------------------------------------------TRAVEL-------------------------------------------
 
+def parse_datetime(value: str):
+    formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+
+    raise HTTPException(
+        status_code=400,
+        detail="Invalid datetime format. Use YYYY-MM-DD HH:MM or YYYY-MM-DD HH:MM:SS"
+    )
+
+
 
 @router.post("/travel")
 def create_travel_dish(
@@ -84,6 +104,8 @@ def create_travel_dish(
     is_halal: bool = Form(False),
     description: str = Form(...),
     price: int = Form(...),
+
+    # 👇 Now accepting string (we parse manually)
     delivery_datetime: str = Form(...),
     last_order_time: str = Form(...),
 
@@ -101,7 +123,24 @@ def create_travel_dish(
 ):
     certificate_path = None
 
-    # ✅ If halal is True, certificate is required
+    # ✅ Parse datetime safely (T not mandatory)
+    delivery_dt = parse_datetime(delivery_datetime)
+    last_order_dt = parse_datetime(last_order_time)
+
+    # ✅ Validate datetime logic
+    if last_order_dt >= delivery_dt:
+        raise HTTPException(
+            status_code=400,
+            detail="Last order time must be before delivery time"
+        )
+
+    if delivery_dt <= datetime.now():
+        raise HTTPException(
+            status_code=400,
+            detail="Delivery datetime must be in the future"
+        )
+
+    # ✅ Halal validation
     if is_halal:
         if not halal_certificate:
             raise HTTPException(
@@ -118,12 +157,22 @@ def create_travel_dish(
 
         certificate_path = file_path
 
-    # Convert string datetime to datetime objects
-    try:
-        delivery_dt = datetime.fromisoformat(delivery_datetime)
-        last_order_dt = datetime.fromisoformat(last_order_time)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid datetime format, use ISO format")
+    # ✅ Travel type validation
+    travel_type = travel_type.upper()
+
+    if travel_type == "TRAIN":
+        if not train_name or not train_number:
+            raise HTTPException(
+                status_code=400,
+                detail="Train name and train number required for TRAIN"
+            )
+
+    if travel_type == "BUS":
+        if not bus_number:
+            raise HTTPException(
+                status_code=400,
+                detail="Bus number required for BUS"
+            )
 
     dish = CookingDish(
         title=title,
