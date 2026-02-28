@@ -105,7 +105,7 @@ def create_travel_dish(
     description: str = Form(...),
     price: int = Form(...),
 
-    # 👇 Now accepting string (we parse manually)
+   
     delivery_datetime: str = Form(...),
     last_order_time: str = Form(...),
 
@@ -123,11 +123,11 @@ def create_travel_dish(
 ):
     certificate_path = None
 
-    # ✅ Parse datetime safely (T not mandatory)
+    
     delivery_dt = parse_datetime(delivery_datetime)
     last_order_dt = parse_datetime(last_order_time)
 
-    # ✅ Validate datetime logic
+    
     if last_order_dt >= delivery_dt:
         raise HTTPException(
             status_code=400,
@@ -140,7 +140,7 @@ def create_travel_dish(
             detail="Delivery datetime must be in the future"
         )
 
-    # ✅ Halal validation
+    
     if is_halal:
         if not halal_certificate:
             raise HTTPException(
@@ -157,7 +157,7 @@ def create_travel_dish(
 
         certificate_path = file_path
 
-    # ✅ Travel type validation
+    # Travel type validation
     travel_type = travel_type.upper()
 
     if travel_type == "TRAIN":
