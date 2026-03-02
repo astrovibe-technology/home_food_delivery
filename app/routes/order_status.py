@@ -1,341 +1,124 @@
+from typing import Optional
+from datetime import datetime, date, time, timedelta
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 import pytz
-# from datetime import time
-from datetime import date,datetime,time,timedelta
-from fastapi import APIRouter, Depends, HTTPException
+
+from database.db import get_db
 from models.order import Order
 from models.orderitem import OrderItem
-from database.db import get_db
 
 router = APIRouter(prefix="/order_status", tags=["order_status"])
 
-# ------------------------------------ PENDING -----------------------------------------
 
+
+def get_orders_by_status(
+    status: str,
+    db: Session,
+    start_date: Optional[str],
+    end_date: Optional[str]
+):
+    query = db.query(Order).filter(Order.status == status)
+
+    ist = pytz.timezone("Asia/Kolkata")
+
+    
+    if start_date and end_date:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+
+        query = query.filter(
+            Order.created_at >= start,
+            Order.created_at < end
+        )
+
+    
+    elif start_date:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = start + timedelta(days=1)
+
+        query = query.filter(
+            Order.created_at >= start,
+            Order.created_at < end
+        )
+
+    
+    elif end_date:
+        start = datetime.strptime(end_date, "%Y-%m-%d")
+        end = start + timedelta(days=1)
+
+        query = query.filter(
+            Order.created_at >= start,
+            Order.created_at < end
+        )
+
+    
+    else:
+        today = datetime.now(ist).date()
+
+        start = datetime.combine(today, time.min)
+        end = start + timedelta(days=1)
+
+        query = query.filter(
+            Order.created_at >= start,
+            Order.created_at < end
+        )
+
+    orders = query.order_by(Order.id.desc()).all()
+
+    
+    if not orders:
+        raise HTTPException(
+            status_code=404,
+            detail="No data found"
+        )
+
+    result = []
+
+    for order in orders:
+        item_count = db.query(OrderItem).filter(
+            OrderItem.order_id == order.id
+        ).count()
+
+        result.append({
+            "order_id": order.id,
+            "items": item_count,
+            "amount": order.total_amount,
+            "date": order.created_at,
+            "status": order.status
+        })
+
+    return result
+
+
+# ---------------- PENDING ----------------
 
 @router.get("/orders/pending")
-def get_all_pending_orders(db: Session = Depends(get_db)):
-
-    orders = db.query(Order).filter(
-        Order.status == "pending"
-    ).order_by(Order.id.desc()).all()
-
-    
-    if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No pending orders found"
-        )
-
-    result = []
-
-    for order in orders:
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
-
-        result.append({
-            "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
-        })
-
-    return result
-
-
-
-@router.get("/orders/pending/today")
-def get_today_pending_orders(db: Session = Depends(get_db)):
-
-    today = date.today()
-
-    orders = db.query(Order).filter(
-        Order.status == "pending",
-        Order.created_at >= today
-    ).order_by(Order.id.desc()).all()
-
-    if not orders:
-        raise HTTPException(status_code=404, detail="No pending orders found for today")
-
-    result = []
-
-    for order in orders:
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
-
-        result.append({
-            "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
-        })
-
-    return result
-
-
-
-@router.get("/orders/pending/by-date")
-def get_pending_orders_by_date(
-    start_date: date,
-    end_date: date,
+def get_pending_orders(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
+    return get_orders_by_status("pending", db, start_date, end_date)
 
-    # Convert start_date to datetime 00:00:00
-    start_datetime = datetime(start_date.year, start_date.month, start_date.day)
 
-    # Convert end_date to next day 00:00:00
-    end_datetime = datetime(end_date.year, end_date.month, end_date.day) + timedelta(days=1)
-
-    orders = db.query(Order).filter(
-        Order.status == "pending",
-        Order.created_at >= start_datetime,
-        Order.created_at < end_datetime   # important (< next day)
-    ).order_by(Order.id.desc()).all()
-
-    if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No pending orders found for given date range"
-        )
-
-    result = []
-
-    for order in orders:
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
-
-        result.append({
-            "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
-        })
-
-    return result
-
-# ---------------------------------- PENDING -------------------------------------------
+# ---------------- COMPLETED ----------------
 
 @router.get("/orders/completed")
-def get_all_completed_orders(db: Session = Depends(get_db)):
-
-    orders = db.query(Order).filter(
-        Order.status == "completed"
-    ).order_by(Order.id.desc()).all()
-
-    
-    if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No completed orders found"
-        )
-
-    result = []
-
-    for order in orders:
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
-
-        result.append({
-            "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
-        })
-
-    return result
-
-
-
-
-
-@router.get("/orders/completed/today")
-def get_today_completed_orders(db: Session = Depends(get_db)):
-
-    today_utc = datetime.utcnow().date()
-
-    orders = db.query(Order).filter(
-        Order.status == "completed",
-        func.date(Order.created_at) == today_utc
-    ).order_by(Order.id.desc()).all()
-
-    if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No completed orders found for today"
-        )
-
-    result = []
-
-    for order in orders:
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
-
-        result.append({
-            "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
-        })
-
-    return result
-
-
-
-
-@router.get("/orders/completed/by-date")
-def get_completed_orders_by_date(
-    start_date: date,
-    end_date: date,
+def get_completed_orders(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-
-    start_datetime = datetime.combine(start_date, time.min)
-    end_datetime = datetime.combine(end_date, time.max)
-
-    orders = db.query(Order).filter(
-        Order.status == "completed",
-        Order.created_at.between(start_datetime, end_datetime)
-    ).order_by(Order.id.desc()).all()
-
-    if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No completed orders found for given date range"
-        )
-
-    result = []
-
-    for order in orders:
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
-
-        result.append({
-            "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
-        })
-
-    return result
+    return get_orders_by_status("completed", db, start_date, end_date)
 
 
-
-
-# ----------------------------- COMPLETED ---------------------------------------------
+# ---------------- CANCELLED ----------------
 
 @router.get("/orders/cancelled")
-def get_all_cancelled_orders(db: Session = Depends(get_db)):
-
-    orders = db.query(Order).filter(
-        Order.status == "cancelled"
-    ).order_by(Order.id.desc()).all()
-
-   
-    if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No cancelled orders found"
-        )
-
-    result = []
-
-    for order in orders:
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
-
-        result.append({
-            "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
-        })
-
-    return result
-
-
-
-@router.get("/orders/cancelled/today")
-def get_today_cancelled_orders(db: Session = Depends(get_db)):
-
-    # Current UTC time
-    now = datetime.utcnow()
-
-    # Start of today (UTC)
-    start_of_day = datetime(now.year, now.month, now.day)
-
-    # End of today (UTC)
-    end_of_day = start_of_day + timedelta(days=1)
-
-    orders = db.query(Order).filter(
-        Order.status == "cancelled",
-        Order.created_at >= start_of_day,
-        Order.created_at < end_of_day
-    ).order_by(Order.id.desc()).all()
-
-    if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No cancelled orders found for today"
-        )
-
-    return orders
-
-
-
-@router.get("/orders/cancelled/by-date")
-def get_cancelled_orders_by_date(
-    start_date: date,
-    end_date: date,
+def get_cancelled_orders(
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-
-    start_datetime = datetime.combine(start_date, time.min)
-    end_datetime = datetime.combine(end_date, time.max)
-
-    orders = db.query(Order).filter(
-        Order.status == "cancelled",
-        Order.created_at.between(start_datetime, end_datetime)
-    ).order_by(Order.id.desc()).all()
-
-    if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No cancelled orders found for given date range"
-        )
-
-    result = []
-
-    for order in orders:
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
-
-        result.append({
-            "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
-        })
-
-    return result
-
-
-
-
-
+    return get_orders_by_status("cancelled", db, start_date, end_date)
