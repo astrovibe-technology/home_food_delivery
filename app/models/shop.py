@@ -16,3 +16,5 @@ class Shop(Base):
     bank_name = Column(String, nullable=True)
     account_number = Column(String, nullable=True)
     IFSC_Code = Column(String, nullable=True)
+
+    status = Column(String, default="pending")  
