@@ -7,6 +7,8 @@ class CookingDish(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"))
 
+    restaurant_id = Column(Integer, ForeignKey("shops.id"))
+
     dish_type = Column(String)  # SOCIETY / WORKPLACE / TRAVEL
 
     title = Column(String, nullable=False)
