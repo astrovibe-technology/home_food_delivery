@@ -29,20 +29,19 @@ def add_to_cart(
     quantity: int = 1,
     db: Session = Depends(get_db)
 ):
-   
+
     menu = db.query(Menu).filter(Menu.id == menu_id).first()
     if not menu:
         raise HTTPException(status_code=404, detail="Menu not found")
 
-   
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
+
     if not cart:
         cart = Cart(user_id=user_id)
         db.add(cart)
         db.commit()
         db.refresh(cart)
 
-  
     item = db.query(CartItem).filter(
         CartItem.cart_id == cart.id,
         CartItem.menu_id == menu.id
@@ -142,42 +141,43 @@ def remove_cart_item(item_id: int, db: Session = Depends(get_db)):
 @router.post("/checkout")
 def checkout(user_id: int, db: Session = Depends(get_db)):
 
-    # 1️⃣ Get Cart
+    # 1️⃣ Get user cart
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
-    if not cart:
-        raise HTTPException(status_code=400, detail="Cart is empty")
 
-    # 2️⃣ Get Cart Items
+    if not cart:
+        raise HTTPException(status_code=400, detail="Cart not found")
+
+    # 2️⃣ Get cart items
     items = db.query(CartItem).filter(CartItem.cart_id == cart.id).all()
+
     if not items:
-        raise HTTPException(status_code=400, detail="No items in cart")
+        raise HTTPException(status_code=400, detail="Cart is empty")
 
     total = 0
     order_items_response = []
 
-    # 3️⃣ Get Restaurant ID from First Menu
+    # 3️⃣ Get restaurant_id from first menu
     first_menu = db.query(Menu).filter(Menu.id == items[0].menu_id).first()
+
     if not first_menu:
         raise HTTPException(status_code=404, detail="Menu not found")
 
     restaurant_id = first_menu.restaurant_id
 
-    # 4️⃣ Safety Check – Prevent Multiple Restaurants
+    # 4️⃣ Check all items belong to same restaurant
     for item in items:
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
-        if not menu:
-            raise HTTPException(status_code=404, detail=f"Menu id {item.menu_id} not found")
 
         if menu.restaurant_id != restaurant_id:
             raise HTTPException(
                 status_code=400,
-                detail="Cannot checkout items from multiple restaurants"
+                detail="Items from multiple restaurants not allowed"
             )
 
-    # 5️⃣ Create Order (🔥 FIXED – restaurant_id added)
+    # 5️⃣ Create Order
     order = Order(
         user_id=user_id,
-        restaurant_id=restaurant_id,  # ✅ FIX HERE
+        restaurant_id=restaurant_id,
         total_amount=0,
         payable_amount=0,
         status="pending"
@@ -191,7 +191,7 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
     for item in items:
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
 
-        item_total = item.quantity * menu.price
+        item_total = menu.price * item.quantity
         total += item_total
 
         order_item = OrderItem(
@@ -200,6 +200,7 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
             quantity=item.quantity,
             price=menu.price
         )
+
         db.add(order_item)
 
         order_items_response.append({
@@ -210,18 +211,19 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
             "total": item_total
         })
 
-    # 7️⃣ Update Order Amount
+    # 7️⃣ Update order amount
     order.total_amount = total
     order.payable_amount = total
 
-    # 8️⃣ Clear Cart
+    # 8️⃣ Clear cart
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
 
     db.commit()
 
+    
     return {
         "order_id": order.id,
-        "restaurant_id": restaurant_id, 
+        "restaurant_id": order.restaurant_id,   
         "status": order.status,
         "items": order_items_response,
         "total_amount": total,
