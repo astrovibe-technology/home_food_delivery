@@ -8,6 +8,37 @@ from database.shop import ShopCreate, ShopUpdate
 router = APIRouter(prefix="/shop", tags=["Shop Profile"])
 
 # -------------------------------------------Create----------------------
+# @router.post("/create")
+# def create_shop(
+#     payload: ShopCreate,
+#     owner_id: int,
+#     db: Session = Depends(get_db)
+# ):
+#     existing = db.query(Shop).filter(Shop.owner_id == owner_id).first()
+#     if existing:
+#         raise HTTPException(400, "Shop profile already exists")
+
+#     shop = Shop(owner_id=owner_id, **payload.dict())
+#     db.add(shop)
+#     db.commit()
+#     db.refresh(shop)
+
+#     return {
+#         "message": "Shop profile created",
+#         "shop_id": shop.id
+#     }
+
+# # --------------------------------GET--------------------------------------------
+
+# @router.get("/{owner_id}")
+# def get_shop(owner_id: int, db: Session = Depends(get_db)):
+#     shop = db.query(Shop).filter(Shop.owner_id == owner_id).first()
+#     if not shop:
+#         raise HTTPException(404, "Shop profile not found")
+
+#     return shop
+
+
 @router.post("/create")
 def create_shop(
     payload: ShopCreate,
@@ -18,25 +49,24 @@ def create_shop(
     if existing:
         raise HTTPException(400, "Shop profile already exists")
 
-    shop = Shop(owner_id=owner_id, **payload.dict())
+    shop = Shop(
+        owner_id=owner_id,
+        status="pending",
+        **payload.dict()
+    )
+
     db.add(shop)
     db.commit()
     db.refresh(shop)
 
     return {
-        "message": "Shop profile created",
-        "shop_id": shop.id
+        "message": "Shop profile created. Waiting for admin approval",
+        "shop_id": shop.id,
+        "status": shop.status
     }
 
-# --------------------------------GET--------------------------------------------
 
-@router.get("/{owner_id}")
-def get_shop(owner_id: int, db: Session = Depends(get_db)):
-    shop = db.query(Shop).filter(Shop.owner_id == owner_id).first()
-    if not shop:
-        raise HTTPException(404, "Shop profile not found")
 
-    return shop
 
 # ------------------------------------------UPDATE-----------------------------
 
@@ -95,6 +125,44 @@ def update_shop_profile(
             "account_number": shop.account_number,
             "IFSC_Code": shop.IFSC_Code
         }
+    }
+
+
+# --------------------------------------STATUS---------------------------------------------
+
+
+@router.get("/admin/pending")
+def get_pending_shops(db: Session = Depends(get_db)):
+
+    shops = db.query(Shop).filter(Shop.status == "pending").all()
+
+    if not shops:
+        raise HTTPException(404, "No pending shop approvals")
+
+    return shops
+
+
+
+# ----------------------------------APPROVE------------------------------------------------
+
+
+@router.put("/admin/approve/{shop_id}")
+def approve_shop(shop_id: int, db: Session = Depends(get_db)):
+
+    shop = db.query(Shop).filter(Shop.id == shop_id).first()
+
+    if not shop:
+        raise HTTPException(404, "Shop not found")
+
+    shop.status = "approved"
+
+    db.commit()
+    db.refresh(shop)
+
+    return {
+        "message": "Shop approved successfully",
+        "shop_id": shop.id,
+        "status": shop.status
     }
 
 
