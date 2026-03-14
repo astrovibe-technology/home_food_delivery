@@ -70,7 +70,6 @@ def login(
 ):
     identifier = payload.email_or_phone.strip()
 
-
     if "@" in identifier:
         user = db.query(User).filter(
             User.email == identifier.lower()
@@ -80,13 +79,11 @@ def login(
             User.phone == identifier
         ).first()
 
-
     if not user:
         raise HTTPException(
             status_code=404,
             detail="Email or phone number not found"
         )
-
 
     if not verify_password(payload.password, user.password):
         raise HTTPException(
@@ -94,13 +91,17 @@ def login(
             detail="Invalid password"
         )
 
-
     token = create_access_token({"user_id": user.id})
 
     return {
         "message": "Login successful",
         "access_token": token,
-        # "token_type": "bearer"
+        "user": {
+            "user_id": user.id,
+            "username": user.name,
+            "email": user.email,
+            "phone": user.phone
+        }
     }
 
 @router.post("/logout", response_model=MessageResponse)
