@@ -130,6 +130,42 @@ def create_society_dish(
     }
 
 
+
+
+
+@router.get("/society")
+def get_society_dishes(db: Session = Depends(get_db)):
+
+    dishes = db.query(CookingDish).filter(
+        CookingDish.dish_type == "SOCIETY"
+    ).order_by(CookingDish.id.desc()).all()
+
+    result = []
+
+    for dish in dishes:
+        result.append({
+            "dish_id": dish.id,
+            "user_id": dish.user_id,
+            "restaurant_id": dish.restaurant_id,
+            "title": dish.title,
+            "food_type": dish.food_type,
+            "is_halal": dish.is_halal,
+            "description": dish.description,
+            "price": dish.price,
+            "delivery_datetime": dish.delivery_datetime,
+            "last_order_time": dish.last_order_time,
+            "building_name": dish.building_name,
+            "house_number": dish.house_number,
+            "floor_number": dish.floor_number,
+            "dish_type": dish.dish_type
+        })
+
+    return {
+        "total_dishes": len(result),
+        "dishes": result
+    }
+
+
 # -------------------------------- TRAVEL --------------------------------
 
 @router.post("/travel")
@@ -239,4 +275,42 @@ def create_travel_dish(
     return {
         "message": "Travel dish published successfully",
         "dish_id": dish.id
+    }
+
+
+
+@router.get("/travel")
+def get_travel_dishes(db: Session = Depends(get_db)):
+
+    dishes = db.query(CookingDish).filter(
+        CookingDish.dish_type == "TRAVEL"
+    ).order_by(CookingDish.id.desc()).all()
+
+    result = []
+
+    for dish in dishes:
+        result.append({
+            "dish_id": dish.id,
+            "user_id": dish.user_id,
+            "restaurant_id": dish.restaurant_id,
+            "title": dish.title,
+            "food_type": dish.food_type,
+            "is_halal": dish.is_halal,
+            "description": dish.description,
+            "price": dish.price,
+            "delivery_datetime": dish.delivery_datetime,
+            "last_order_time": dish.last_order_time,
+            "travel_type": dish.travel_type,
+            "train_name": dish.train_name,
+            "train_number": dish.train_number,
+            "bus_number": dish.bus_number,
+            "route": dish.route,
+            "bogie_number": dish.bogie_number,
+            "seat_number": dish.seat_number,
+            "dish_type": dish.dish_type
+        })
+
+    return {
+        "total_dishes": len(result),
+        "dishes": result
     }
