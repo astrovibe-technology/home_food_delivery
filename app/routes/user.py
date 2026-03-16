@@ -100,7 +100,8 @@ def login(
             "user_id": user.id,
             "username": user.name,
             "email": user.email,
-            "phone": user.phone
+            "phone": user.phone,
+            "referral_code": user.referral_code
         }
     }
 
