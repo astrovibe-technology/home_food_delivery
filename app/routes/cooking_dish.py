@@ -166,6 +166,51 @@ def get_society_dishes(db: Session = Depends(get_db)):
     }
 
 
+
+
+@router.get("/society/{user_id}")
+def get_society_dishes_by_user(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    dishes = db.query(CookingDish).filter(
+        CookingDish.dish_type == "SOCIETY",
+        CookingDish.user_id == user_id
+    ).order_by(CookingDish.id.desc()).all()
+
+    if not dishes:
+        raise HTTPException(
+            status_code=404,
+            detail="No society dishes found for this user"
+        )
+
+    result = []
+
+    for dish in dishes:
+        result.append({
+            "dish_id": dish.id,
+            "user_id": dish.user_id,
+            "restaurant_id": dish.restaurant_id,
+            "title": dish.title,
+            "food_type": dish.food_type,
+            "is_halal": dish.is_halal,
+            "description": dish.description,
+            "price": dish.price,
+            "delivery_datetime": dish.delivery_datetime,
+            "last_order_time": dish.last_order_time,
+            "building_name": dish.building_name,
+            "house_number": dish.house_number,
+            "floor_number": dish.floor_number,
+            "dish_type": dish.dish_type
+        })
+
+    return {
+        "total_dishes": len(result),
+        "dishes": result
+    }
+
+
 # -------------------------------- TRAVEL --------------------------------
 
 @router.post("/travel")
@@ -177,9 +222,6 @@ def create_travel_dish(
     is_halal: bool = Form(False),
     description: str = Form(...),
     price: int = Form(...),
-
-    delivery_datetime: str = Form(...),
-    last_order_time: str = Form(...),
 
     travel_type: str = Form(...),
     train_name: str = Form(None),
@@ -194,26 +236,12 @@ def create_travel_dish(
     db: Session = Depends(get_db)
 ):
 
-    # ✅ shop check
+    # shop check
     shop = check_shop_approved(db, user_id)
 
     certificate_path = None
 
-    delivery_dt = parse_datetime(delivery_datetime)
-    last_order_dt = parse_datetime(last_order_time)
-
-    if last_order_dt >= delivery_dt:
-        raise HTTPException(
-            status_code=400,
-            detail="Last order time must be before delivery time"
-        )
-
-    if delivery_dt <= datetime.now():
-        raise HTTPException(
-            status_code=400,
-            detail="Delivery datetime must be in the future"
-        )
-
+    # halal validation
     if is_halal:
         if not halal_certificate:
             raise HTTPException(
@@ -248,15 +276,13 @@ def create_travel_dish(
 
     dish = CookingDish(
         user_id=user_id,
-        restaurant_id=shop.id,   # ✅ IMPORTANT CHANGE
+        restaurant_id=shop.id,
         title=title,
         food_type=food_type,
         is_halal=is_halal,
         halal_certificate=certificate_path,
         description=description,
         price=price,
-        delivery_datetime=delivery_dt,
-        last_order_time=last_order_dt,
         travel_type=travel_type,
         train_name=train_name,
         train_number=train_number,
@@ -300,6 +326,54 @@ def get_travel_dishes(db: Session = Depends(get_db)):
             "price": dish.price,
             "delivery_datetime": dish.delivery_datetime,
             "last_order_time": dish.last_order_time,
+            "travel_type": dish.travel_type,
+            "train_name": dish.train_name,
+            "train_number": dish.train_number,
+            "bus_number": dish.bus_number,
+            "route": dish.route,
+            "bogie_number": dish.bogie_number,
+            "seat_number": dish.seat_number,
+            "dish_type": dish.dish_type
+        })
+
+    return {
+        "total_dishes": len(result),
+        "dishes": result
+    }
+
+
+
+@router.get("/travel/{user_id}")
+def get_travel_dishes_by_user(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+
+    dishes = db.query(CookingDish).filter(
+        CookingDish.dish_type == "TRAVEL",
+        CookingDish.user_id == user_id
+    ).order_by(CookingDish.id.desc()).all()
+
+    if not dishes:
+        raise HTTPException(
+            status_code=404,
+            detail="No travel dishes found for this user"
+        )
+
+    result = []
+
+    for dish in dishes:
+        result.append({
+            "dish_id": dish.id,
+            "user_id": dish.user_id,
+            "restaurant_id": dish.restaurant_id,
+            "title": dish.title,
+            "food_type": dish.food_type,
+            "is_halal": dish.is_halal,
+            "description": dish.description,
+            "price": dish.price,
+            # "delivery_datetime": dish.delivery_datetime,
+            # "last_order_time": dish.last_order_time,
             "travel_type": dish.travel_type,
             "train_name": dish.train_name,
             "train_number": dish.train_number,
