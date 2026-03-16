@@ -6,6 +6,7 @@ class Menu(Base):
 
     id = Column(Integer, primary_key=True)
     restaurant_id = Column(Integer, ForeignKey("restaurants.id"))
+    shop_id = Column(Integer, ForeignKey("shops.id")) 
     name = Column(String, nullable=False)
     description = Column(String)
     price = Column(Integer, nullable=False)
