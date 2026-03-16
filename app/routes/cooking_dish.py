@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 import shutil, os, uuid
 from datetime import datetime
+from models.menu import Menu
 from sqlalchemy.orm import Session
 from database.db import get_db
 from models.cooking_dish import CookingDish
@@ -168,46 +169,46 @@ def get_society_dishes(db: Session = Depends(get_db)):
 
 
 
-@router.get("/society/{user_id}")
-def get_society_dishes_by_user(
-    user_id: int,
+@router.get("/shop/{shop_id}")
+def get_all_shop_items(
+    shop_id: int,
     db: Session = Depends(get_db)
 ):
 
-    dishes = db.query(CookingDish).filter(
-        CookingDish.dish_type == "SOCIETY",
-        CookingDish.user_id == user_id
-    ).order_by(CookingDish.id.desc()).all()
+    cooking_dishes = db.query(CookingDish).filter(
+        CookingDish.restaurant_id == shop_id
+    ).all()
 
-    if not dishes:
-        raise HTTPException(
-            status_code=404,
-            detail="No society dishes found for this user"
-        )
+    menus = db.query(Menu).filter(
+        Menu.shop_id == shop_id
+    ).all()
 
     result = []
 
-    for dish in dishes:
+    # Cooking dishes
+    for dish in cooking_dishes:
         result.append({
-            "dish_id": dish.id,
-            "user_id": dish.user_id,
-            "restaurant_id": dish.restaurant_id,
+            "id": dish.id,
             "title": dish.title,
-            "food_type": dish.food_type,
-            "is_halal": dish.is_halal,
-            "description": dish.description,
             "price": dish.price,
-            "delivery_datetime": dish.delivery_datetime,
-            "last_order_time": dish.last_order_time,
-            "building_name": dish.building_name,
-            "house_number": dish.house_number,
-            "floor_number": dish.floor_number,
-            "dish_type": dish.dish_type
+            "description": dish.description,
+            "type": dish.dish_type
+        })
+
+    # Menu dishes
+    for menu in menus:
+        result.append({
+            "id": menu.id,
+            "title": menu.name,
+            "price": menu.price,
+            "description": menu.description,
+            "type": "RESTAURANT"
         })
 
     return {
-        "total_dishes": len(result),
-        "dishes": result
+        "shop_id": shop_id,
+        "total_items": len(result),
+        "items": result
     }
 
 
@@ -305,86 +306,45 @@ def create_travel_dish(
 
 
 
-@router.get("/travel")
-def get_travel_dishes(db: Session = Depends(get_db)):
-
-    dishes = db.query(CookingDish).filter(
-        CookingDish.dish_type == "TRAVEL"
-    ).order_by(CookingDish.id.desc()).all()
-
-    result = []
-
-    for dish in dishes:
-        result.append({
-            "dish_id": dish.id,
-            "user_id": dish.user_id,
-            "restaurant_id": dish.restaurant_id,
-            "title": dish.title,
-            "food_type": dish.food_type,
-            "is_halal": dish.is_halal,
-            "description": dish.description,
-            "price": dish.price,
-            "delivery_datetime": dish.delivery_datetime,
-            "last_order_time": dish.last_order_time,
-            "travel_type": dish.travel_type,
-            "train_name": dish.train_name,
-            "train_number": dish.train_number,
-            "bus_number": dish.bus_number,
-            "route": dish.route,
-            "bogie_number": dish.bogie_number,
-            "seat_number": dish.seat_number,
-            "dish_type": dish.dish_type
-        })
-
-    return {
-        "total_dishes": len(result),
-        "dishes": result
-    }
-
-
-
-@router.get("/travel/{user_id}")
-def get_travel_dishes_by_user(
-    user_id: int,
+@router.get("/travel/{shop_id}")
+def get_travel_shop_items(
+    shop_id: int,
     db: Session = Depends(get_db)
 ):
 
-    dishes = db.query(CookingDish).filter(
-        CookingDish.dish_type == "TRAVEL",
-        CookingDish.user_id == user_id
-    ).order_by(CookingDish.id.desc()).all()
+    cooking_dishes = db.query(CookingDish).filter(
+        CookingDish.restaurant_id == shop_id,
+        CookingDish.dish_type == "TRAVEL"
+    ).all()
 
-    if not dishes:
-        raise HTTPException(
-            status_code=404,
-            detail="No travel dishes found for this user"
-        )
+    menus = db.query(Menu).filter(
+        Menu.shop_id == shop_id
+    ).all()
 
     result = []
 
-    for dish in dishes:
+    # Travel cooking dishes
+    for dish in cooking_dishes:
         result.append({
-            "dish_id": dish.id,
-            "user_id": dish.user_id,
-            "restaurant_id": dish.restaurant_id,
+            "id": dish.id,
             "title": dish.title,
-            "food_type": dish.food_type,
-            "is_halal": dish.is_halal,
-            "description": dish.description,
             "price": dish.price,
-            # "delivery_datetime": dish.delivery_datetime,
-            # "last_order_time": dish.last_order_time,
-            "travel_type": dish.travel_type,
-            "train_name": dish.train_name,
-            "train_number": dish.train_number,
-            "bus_number": dish.bus_number,
-            "route": dish.route,
-            "bogie_number": dish.bogie_number,
-            "seat_number": dish.seat_number,
-            "dish_type": dish.dish_type
+            "description": dish.description,
+            "type": dish.dish_type
+        })
+
+    # Menu dishes
+    for menu in menus:
+        result.append({
+            "id": menu.id,
+            "title": menu.name,
+            "price": menu.price,
+            "description": menu.description,
+            "type": "RESTAURANT"
         })
 
     return {
-        "total_dishes": len(result),
-        "dishes": result
+        "shop_id": shop_id,
+        "total_items": len(result),
+        "items": result
     }
