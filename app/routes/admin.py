@@ -4,12 +4,15 @@ from sqlalchemy import extract
 from database.db import get_db
 from models.user import User
 from models.order import Order
+from models.timings import Timing
+from models.cooking_dish import CookingDish
 from models.restaurant import Restaurant
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import jwt
 from sqlalchemy import and_, or_
-from time import time
+from datetime import time
+from enum import Enum
 from lib_tu.timezone import SLOT_TIME_MAP
 
 
@@ -142,48 +145,47 @@ def get_reports(db: Session = Depends(get_db)):
     return result
 
 
-# ----------------------------------------Available restaurant---------------------
+# -----------------------
+# GET available restaurants by slot
+# -----------------------
+
+class SlotEnum(str, Enum):
+    early_morning = "early_morning"
+    breakfast = "breakfast"
+    brunch = "brunch"
+    lunch = "lunch"
+    snacks = "snacks"
+    dinner = "dinner"
+    midnight = "midnight"
 
 
-@router.get("/restaurants")
+@router.get("/available-restaurants")
 def get_available_restaurants(
-    slot: str = Query(..., description=" Early Morning / breakfast / lunch / dinner / Brunch / Snacks / Midnight "),
+    slot: SlotEnum,
     db: Session = Depends(get_db)
 ):
-    slot = slot.lower()
 
-    if slot not in SLOT_TIME_MAP:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid slot. Please select a valid time slot."
-        )
+    timing = db.query(Timing).filter(
+        Timing.name == slot.value.upper(),
+        Timing.is_active == True
+    ).first()
 
-    start_time, end_time = SLOT_TIME_MAP[slot]
+    if not timing:
+        raise HTTPException(status_code=404, detail="Slot not found")
 
-    # midnight special case
-    if slot == "midnight":
-        restaurants = db.query(Restaurant).filter(
-            Restaurant.is_active == True,
-            or_(
-                and_(Restaurant.start_time <= start_time, Restaurant.end_time <= time(23,59)),
-                and_(Restaurant.start_time >= time(0,0), Restaurant.end_time >= end_time)
-            )
-        ).all()
-    else:
-        restaurants = db.query(Restaurant).filter(
-            Restaurant.is_active == True,
-            Restaurant.start_time <= start_time,
-            Restaurant.end_time >= end_time
-        ).all()
+    start_time = timing.start_time
+    end_time = timing.end_time
 
-    if not restaurants:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No restaurants available for {slot} time."
-        )
+    restaurants = db.query(Restaurant).filter(
+        Restaurant.is_active == True,
+        Restaurant.start_time <= start_time,
+        Restaurant.end_time >= end_time
+    ).all()
 
     return {
-        "slot": slot,
-        "count": len(restaurants),
+        "slot": slot.value,
+        "start_time": start_time,
+        "end_time": end_time,
+        "total_restaurants": len(restaurants),
         "restaurants": restaurants
     }
