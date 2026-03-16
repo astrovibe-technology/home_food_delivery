@@ -30,10 +30,12 @@ def add_to_cart(
     db: Session = Depends(get_db)
 ):
 
+    # 1️⃣ Get menu
     menu = db.query(Menu).filter(Menu.id == menu_id).first()
     if not menu:
         raise HTTPException(status_code=404, detail="Menu not found")
 
+    # 2️⃣ Get or create cart
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
 
     if not cart:
@@ -42,26 +44,48 @@ def add_to_cart(
         db.commit()
         db.refresh(cart)
 
-    item = db.query(CartItem).filter(
+    # 3️⃣ Check existing cart items
+    cart_items = db.query(CartItem).filter(CartItem.cart_id == cart.id).all()
+
+    if cart_items:
+        first_menu = db.query(Menu).filter(Menu.id == cart_items[0].menu_id).first()
+
+        if first_menu.shop_id != menu.shop_id:
+            raise HTTPException(
+                status_code=400,
+                detail="You can only order from one shop at a time"
+            )
+
+    # 4️⃣ Check if item already in cart
+    existing_item = db.query(CartItem).filter(
         CartItem.cart_id == cart.id,
-        CartItem.menu_id == menu.id
+        CartItem.menu_id == menu_id
     ).first()
 
-    if item:
-        item.quantity += quantity
-    else:
-        item = CartItem(
-            cart_id=cart.id,
-            menu_id=menu.id,
-            quantity=quantity
-        )
-        db.add(item)
+    if existing_item:
+        existing_item.quantity += quantity
+        db.commit()
 
+        return {
+            "message": "Cart quantity updated",
+            "menu_id": menu_id,
+            "quantity": existing_item.quantity
+        }
+
+    # 5️⃣ Add new item
+    cart_item = CartItem(
+        cart_id=cart.id,
+        menu_id=menu_id,
+        quantity=quantity
+    )
+
+    db.add(cart_item)
     db.commit()
 
     return {
         "message": "Item added to cart",
-        "menu_name": menu.name,
+        "cart_id": cart.id,
+        "menu_id": menu_id,
         "quantity": quantity
     }
 
@@ -141,13 +165,13 @@ def remove_cart_item(item_id: int, db: Session = Depends(get_db)):
 @router.post("/checkout")
 def checkout(user_id: int, db: Session = Depends(get_db)):
 
-    # 1️⃣ Get user cart
+    
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
 
     if not cart:
         raise HTTPException(status_code=400, detail="Cart not found")
 
-    # 2️⃣ Get cart items
+    
     items = db.query(CartItem).filter(CartItem.cart_id == cart.id).all()
 
     if not items:
@@ -156,28 +180,28 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
     total = 0
     order_items_response = []
 
-    # 3️⃣ Get restaurant_id from first menu
+    
     first_menu = db.query(Menu).filter(Menu.id == items[0].menu_id).first()
 
     if not first_menu:
         raise HTTPException(status_code=404, detail="Menu not found")
 
-    restaurant_id = first_menu.restaurant_id
+    shop_id = first_menu.shop_id
 
-    # 4️⃣ Check all items belong to same restaurant
+    
     for item in items:
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
 
-        if menu.restaurant_id != restaurant_id:
+        if menu.shop_id != shop_id:
             raise HTTPException(
                 status_code=400,
-                detail="Items from multiple restaurants not allowed"
+                detail="Items from multiple shops not allowed"
             )
 
-    # 5️⃣ Create Order
+    
     order = Order(
         user_id=user_id,
-        restaurant_id=restaurant_id,
+        shop_id=shop_id,
         total_amount=0,
         payable_amount=0,
         status="pending"
@@ -187,7 +211,7 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
 
-    # 6️⃣ Create Order Items
+    
     for item in items:
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
 
@@ -211,24 +235,22 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
             "total": item_total
         })
 
-    # 7️⃣ Update order amount
+   
     order.total_amount = total
     order.payable_amount = total
 
-    # 8️⃣ Clear cart
+    
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
 
     db.commit()
 
-    
     return {
         "order_id": order.id,
-        "restaurant_id": order.restaurant_id,   
+        "shop_id": order.shop_id,
         "status": order.status,
         "items": order_items_response,
         "total_amount": total,
         "message": "Order placed successfully"
     }
-
 
 
