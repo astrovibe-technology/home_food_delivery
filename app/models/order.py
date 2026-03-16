@@ -8,6 +8,7 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True)
     restaurant_id = Column(Integer, ForeignKey("restaurants.id"))
+    shop_id = Column(Integer, ForeignKey("shops.id")) 
     user_id = Column(Integer, ForeignKey("users.id"))
     address_id = Column(Integer, ForeignKey("addresses.id"))
     total_amount = Column(Integer, default=0)
