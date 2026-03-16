@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from database.db import get_db
 from models.shop import Shop
+from models.user import User
 from database.shop import ShopCreate, ShopUpdate
 
 router = APIRouter(prefix="/shop", tags=["Shop Profile"])
@@ -45,14 +46,31 @@ def create_shop(
     owner_id: int,
     db: Session = Depends(get_db)
 ):
-    existing = db.query(Shop).filter(Shop.owner_id == owner_id).first()
-    if existing:
-        raise HTTPException(400, "Shop profile already exists")
 
+    # 1️⃣ Check owner exists
+    owner = db.query(User).filter(User.id == owner_id).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="Owner not found")
+
+    # 2️⃣ Check shop already exists
+    existing_shop = db.query(Shop).filter(Shop.owner_id == owner_id).first()
+    if existing_shop:
+        raise HTTPException(
+            status_code=400,
+            detail="Shop profile already exists for this owner"
+        )
+
+    # 3️⃣ Create shop
     shop = Shop(
         owner_id=owner_id,
-        status="pending",
-        **payload.dict()
+        shop_name=payload.shop_name,
+        address=payload.address,
+        certificate_no=payload.certificate_no,
+        gst_number=payload.gst_number,
+        bank_name=payload.bank_name,
+        account_number=payload.account_number,
+        IFSC_Code=payload.IFSC_Code,
+        status="pending"
     )
 
     db.add(shop)
@@ -60,8 +78,9 @@ def create_shop(
     db.refresh(shop)
 
     return {
-        "message": "Shop profile created. Waiting for admin approval",
+        "message": "Shop profile created successfully. Waiting for admin approval",
         "shop_id": shop.id,
+        "owner_id": shop.owner_id,
         "status": shop.status
     }
 
