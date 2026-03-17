@@ -62,47 +62,49 @@ def get_db():
 class MenuCreate(BaseModel):
     name: str
     price: int
-    description: Optional[str] = None
+    description: str
+    dish_type: str   # society / travel
+    food_type: str   # veg / non_veg
+
+class BulkMenuCreate(BaseModel):
+    menus: List[MenuCreate]
 
 
-@router.post("/bulk-create")
-def create_multiple_menus(
+
+@router.post("/menus/bulk-create")
+def bulk_create_menu(
     shop_id: int,
-    menus: List[MenuCreate],
+    request: BulkMenuCreate,
     db: Session = Depends(get_db)
 ):
 
-    shop = db.query(Shop).filter(Shop.id == shop_id).first()
-    if not shop:
-        raise HTTPException(status_code=404, detail="Shop not found")
+    created_items = []
 
-    response_items = {}
-
-    for index, menu_data in enumerate(menus, start=1):
+    for item in request.menus:
 
         menu = Menu(
-            name=menu_data.name,
-            price=menu_data.price,
-            description=menu_data.description,
             shop_id=shop_id,
-            is_available=True
+            name=item.name,
+            description=item.description,
+            price=item.price,
+            dish_type=item.dish_type.lower(),
+            food_type=item.food_type.lower()
         )
 
         db.add(menu)
-        db.commit()
-        db.refresh(menu)
 
-        response_items[f"item{index}"] = {
-            "menu_id": menu.id,
-            "name": menu.name,
-            "price": menu.price,
-            "description": menu.description
-        }
+        created_items.append({
+            "name": item.name,
+            "dish_type": item.dish_type,
+            "food_type": item.food_type
+        })
+
+    db.commit()
 
     return {
         "message": "Menus created successfully",
-        "total_items": len(menus),
-        "menus": response_items
+        "total": len(created_items),
+        "items": created_items
     }
 
 
@@ -110,20 +112,28 @@ def create_multiple_menus(
 @router.get("/by-shop")
 def get_menus_by_shop(
     shop_id: int,
+    dish_type: str = None,  
     db: Session = Depends(get_db)
 ):
+
     # Check shop exists
     shop = db.query(Shop).filter(Shop.id == shop_id).first()
     if not shop:
         raise HTTPException(status_code=404, detail="Shop not found")
 
-    menus = db.query(Menu).filter(Menu.shop_id == shop_id).all()
+    query = db.query(Menu).filter(Menu.shop_id == shop_id)
+
+    # Apply filter only if provided
+    if dish_type:
+        query = query.filter(Menu.dish_type == dish_type.lower())
+
+    menus = query.all()
 
     if not menus:
         return {
             "shop_id": shop_id,
             "menus": [],
-            "message": "No menus found for this shop"
+            "message": "No menus found"
         }
 
     menu_list = []
@@ -133,7 +143,8 @@ def get_menus_by_shop(
             "name": menu.name,
             "price": menu.price,
             "description": menu.description,
-            # "is_available": menu.is_available
+            "dish_type": menu.dish_type,
+            "food_type": menu.food_type
         })
 
     return {
