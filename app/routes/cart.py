@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from pydantic import BaseModel
+
 
 from database.db import SessionLocal
 from models.cart import Cart
+from models.cooking_dish import CookingDish
 from models.cartitem import CartItem
 from models.menu import Menu
 from models.order import Order
@@ -21,21 +24,24 @@ def get_db():
         db.close()
 
 # -----------------------------------------------ADD------------------------------------------
+class CartItemRequest(BaseModel):
+    menu_id: int
+    quantity: int
+
+class AddToCartRequest(BaseModel):
+    user_id: int
+    items: List[CartItemRequest]
+
 
 @router.post("/add")
-def add_to_cart(
-    user_id: int,
-    menu_id: int,
-    quantity: int = 1,
+def add_multiple_to_cart(
+    request: AddToCartRequest,
     db: Session = Depends(get_db)
 ):
+    user_id = request.user_id
+    items = request.items
 
-    # 1️⃣ Get menu
-    menu = db.query(Menu).filter(Menu.id == menu_id).first()
-    if not menu:
-        raise HTTPException(status_code=404, detail="Menu not found")
-
-    # 2️⃣ Get or create cart
+    # Get or create cart
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
 
     if not cart:
@@ -44,52 +50,85 @@ def add_to_cart(
         db.commit()
         db.refresh(cart)
 
-    # 3️⃣ Check existing cart items
-    cart_items = db.query(CartItem).filter(CartItem.cart_id == cart.id).all()
+    added_items = []
 
-    if cart_items:
-        first_menu = db.query(Menu).filter(Menu.id == cart_items[0].menu_id).first()
+    for item in items:
+        menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
+        if not menu:
+            raise HTTPException(status_code=404, detail=f"Menu {item.menu_id} not found")
 
-        if first_menu.shop_id != menu.shop_id:
-            raise HTTPException(
-                status_code=400,
-                detail="You can only order from one shop at a time"
+        # Check existing item
+        existing_item = db.query(CartItem).filter(
+            CartItem.cart_id == cart.id,
+            CartItem.menu_id == item.menu_id
+        ).first()
+
+        if existing_item:
+            existing_item.quantity += item.quantity
+        else:
+            cart_item = CartItem(
+                cart_id=cart.id,
+                menu_id=item.menu_id,
+                quantity=item.quantity
             )
+            db.add(cart_item)
 
-    # 4️⃣ Check if item already in cart
-    existing_item = db.query(CartItem).filter(
-        CartItem.cart_id == cart.id,
-        CartItem.menu_id == menu_id
-    ).first()
+        added_items.append({
+            "menu_id": item.menu_id,
+            "quantity": item.quantity
+        })
 
-    if existing_item:
-        existing_item.quantity += quantity
-        db.commit()
-
-        return {
-            "message": "Cart quantity updated",
-            "menu_id": menu_id,
-            "quantity": existing_item.quantity
-        }
-
-    # 5️⃣ Add new item
-    cart_item = CartItem(
-        cart_id=cart.id,
-        menu_id=menu_id,
-        quantity=quantity
-    )
-
-    db.add(cart_item)
     db.commit()
 
     return {
-        "message": "Item added to cart",
+        "message": "Items added to cart",
         "cart_id": cart.id,
-        "menu_id": menu_id,
-        "quantity": quantity
+        "items": added_items
     }
 
 # ----------------------------------- GET -----------------------------------------------
+
+@router.get("/get")
+def get_user_cart(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    cart = db.query(Cart).filter(Cart.user_id == user_id).first()
+
+    if not cart:
+        return {
+            "user_id": user_id,
+            "cart": [],
+            "total_amount": 0
+        }
+
+    items = db.query(CartItem).filter(CartItem.cart_id == cart.id).all()
+
+    cart_data = []
+    total_amount = 0
+
+    for item in items:
+        menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
+
+        item_total = menu.price * item.quantity
+        total_amount += item_total
+
+        cart_data.append({
+            "menu_id": menu.id,
+            "name": menu.name,
+            "price": menu.price,
+            "quantity": item.quantity,
+            "total": item_total
+        })
+
+    return {
+        "user_id": user_id,
+        "cart_id": cart.id,
+        "total_items": len(cart_data),
+        "total_amount": total_amount,
+        "items": cart_data
+    }
+
 
 
 # @router.get("/{user_id}")
@@ -162,95 +201,93 @@ def remove_cart_item(item_id: int, db: Session = Depends(get_db)):
 
 
 
-@router.post("/checkout")
+@router.post("/cart/checkout")
 def checkout(user_id: int, db: Session = Depends(get_db)):
 
-    
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
 
     if not cart:
         raise HTTPException(status_code=400, detail="Cart not found")
 
-    
     items = db.query(CartItem).filter(CartItem.cart_id == cart.id).all()
 
     if not items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    total = 0
-    order_items_response = []
+    # 🔥 GROUP ITEMS BY SHOP
+    shop_map = {}
 
-    
-    first_menu = db.query(Menu).filter(Menu.id == items[0].menu_id).first()
-
-    if not first_menu:
-        raise HTTPException(status_code=404, detail="Menu not found")
-
-    shop_id = first_menu.shop_id
-
-    
     for item in items:
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
 
-        if menu.shop_id != shop_id:
-            raise HTTPException(
-                status_code=400,
-                detail="Items from multiple shops not allowed"
-            )
+        shop_id = menu.shop_id
 
-    
-    order = Order(
-        user_id=user_id,
-        shop_id=shop_id,
-        total_amount=0,
-        payable_amount=0,
-        status="pending"
-    )
+        if shop_id not in shop_map:
+            shop_map[shop_id] = []
 
-    db.add(order)
-    db.commit()
-    db.refresh(order)
+        shop_map[shop_id].append((item, menu))
 
-    
-    for item in items:
-        menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
+    orders_response = []
 
-        item_total = menu.price * item.quantity
-        total += item_total
+    # 🔥 CREATE ORDER PER SHOP
+    for shop_id, item_list in shop_map.items():
 
-        order_item = OrderItem(
-            order_id=order.id,
-            menu_id=menu.id,
-            quantity=item.quantity,
-            price=menu.price
+        total = 0
+
+        order = Order(
+            user_id=user_id,
+            shop_id=shop_id,
+            total_amount=0,
+            payable_amount=0,
+            status="pending"
         )
 
-        db.add(order_item)
+        db.add(order)
+        db.commit()
+        db.refresh(order)
 
-        order_items_response.append({
-            "menu_id": menu.id,
-            "menu_name": menu.name,
-            "price": menu.price,
-            "quantity": item.quantity,
-            "total": item_total
+        order_items_data = []
+
+        for item, menu in item_list:
+
+            item_total = menu.price * item.quantity
+            total += item_total
+
+            order_item = OrderItem(
+                order_id=order.id,
+                menu_id=menu.id,
+                quantity=item.quantity,
+                price=menu.price
+            )
+
+            db.add(order_item)
+
+            order_items_data.append({
+                "menu_id": menu.id,
+                "menu_name": menu.name,
+                "quantity": item.quantity,
+                "price": menu.price,
+                "total": item_total
+            })
+
+        order.total_amount = total
+        order.payable_amount = total
+
+        db.commit()
+
+        orders_response.append({
+            "order_id": order.id,
+            "shop_id": shop_id,
+            "total_amount": total,
+            "items": order_items_data
         })
 
-   
-    order.total_amount = total
-    order.payable_amount = total
-
-    
+    # 🧹 CLEAR CART
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
-
     db.commit()
 
     return {
-        "order_id": order.id,
-        "shop_id": order.shop_id,
-        "status": order.status,
-        "items": order_items_response,
-        "total_amount": total,
-        "message": "Order placed successfully"
+        "message": "Orders placed successfully (multi-shop)",
+        "orders": orders_response
     }
-
 
