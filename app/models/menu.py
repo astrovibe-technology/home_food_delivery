@@ -9,6 +9,9 @@ class Menu(Base):
     shop_id = Column(Integer, ForeignKey("shops.id")) 
     name = Column(String, nullable=False)
     description = Column(String)
+    dish_type = Column(String)   # "society" / "travel"
+    food_type = Column(String)   # "veg" / "non_veg"
+
     price = Column(Integer, nullable=False)
     is_available = Column(Boolean, default=True)
 
