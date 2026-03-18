@@ -16,6 +16,8 @@ class Order(Base):
     payable_amount = Column(Integer)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
+    payment_method = Column(String, nullable=True)
+    payment_status = Column(String, default="pending")
 
     user = relationship("User", back_populates="orders")
     restaurant = relationship("Restaurant", back_populates="orders")
