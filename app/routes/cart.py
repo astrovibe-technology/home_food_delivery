@@ -202,7 +202,16 @@ def remove_cart_item(item_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/cart/checkout")
-def checkout(user_id: int, db: Session = Depends(get_db)):
+def checkout(
+    user_id: int,
+    payment_method: str,  
+    db: Session = Depends(get_db)
+):
+
+    valid_methods = ["cod", "card", "upi"]
+
+    if payment_method not in valid_methods:
+        raise HTTPException(status_code=400, detail="Invalid payment method")
 
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
 
@@ -214,7 +223,6 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
     if not items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    # 🔥 GROUP ITEMS BY SHOP
     shop_map = {}
 
     for item in items:
@@ -229,7 +237,6 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
 
     orders_response = []
 
-    # 🔥 CREATE ORDER PER SHOP
     for shop_id, item_list in shop_map.items():
 
         total = 0
@@ -239,6 +246,8 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
             shop_id=shop_id,
             total_amount=0,
             payable_amount=0,
+            payment_method=payment_method,  
+            payment_status="pending",       
             status="pending"
         )
 
@@ -273,16 +282,23 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
         order.total_amount = total
         order.payable_amount = total
 
+        
+        if payment_method == "cod":
+            order.payment_status = "pending"
+        else:
+            order.payment_status = "paid"   
+
         db.commit()
 
         orders_response.append({
             "order_id": order.id,
             "shop_id": shop_id,
             "total_amount": total,
+            "payment_method": payment_method,
+            "payment_status": order.payment_status,
             "items": order_items_data
         })
 
-    # 🧹 CLEAR CART
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
     db.commit()
 
@@ -290,4 +306,3 @@ def checkout(user_id: int, db: Session = Depends(get_db)):
         "message": "Orders placed successfully (multi-shop)",
         "orders": orders_response
     }
-
