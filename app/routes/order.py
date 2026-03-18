@@ -69,36 +69,91 @@ def update_order_status(order_id: int, new_status: str, db: Session = Depends(ge
 
 
 
-@router.get("/")
-def get_all_orders(db: Session = Depends(get_db)):
+@router.get("/orders/bought")
+def get_bought_orders(
+    user_id: int,
+    status: str = None,   # 👈 NEW
+    db: Session = Depends(get_db)
+):
 
-    orders = db.query(Order).order_by(Order.id.desc()).all()
+    query = db.query(Order).filter(Order.user_id == user_id)
 
-    
+    if status:
+        query = query.filter(Order.status == status.lower())  # 👈 FILTER
+
+    orders = query.all()
+
     if not orders:
-        raise HTTPException(
-            status_code=404,
-            detail="No data found"
-        )
+        return {"message": "No bought orders found"}
 
     result = []
 
     for order in orders:
-        # Count items in this order
-        item_count = db.query(OrderItem).filter(
-            OrderItem.order_id == order.id
-        ).count()
+        items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
 
         result.append({
             "order_id": order.id,
-            "items": item_count,
-            "amount": order.total_amount,
-            "date": order.created_at,
-            "status": order.status
+            "shop_id": order.shop_id,
+            "total_amount": order.total_amount,
+            "payment_method": order.payment_method,
+            "payment_status": order.payment_status,
+            "status": order.status,
+            "items": [
+                {
+                    "menu_id": item.menu_id,
+                    "quantity": item.quantity,
+                    "price": item.price
+                } for item in items
+            ]
         })
 
     return {
-        "total_orders": len(result),
+        "type": "bought",
+        "orders": result
+    }
+
+
+
+@router.get("/orders/sold")
+def get_sold_orders(
+    shop_id: int,
+    status: str = None,   # 👈 NEW
+    db: Session = Depends(get_db)
+):
+
+    query = db.query(Order).filter(Order.shop_id == shop_id)
+
+    if status:
+        query = query.filter(Order.status == status.lower())  # 👈 FILTER
+
+    orders = query.all()
+
+    if not orders:
+        return {"message": "No sold orders found"}
+
+    result = []
+
+    for order in orders:
+        items = db.query(OrderItem).filter(OrderItem.order_id == order.id).all()
+
+        result.append({
+            "order_id": order.id,
+            "user_id": order.user_id,
+            "total_amount": order.total_amount,
+            "payment_method": order.payment_method,
+            "payment_status": order.payment_status,
+            "status": order.status,
+            "items": [
+                {
+                    "menu_id": item.menu_id,
+                    "quantity": item.quantity,
+                    "price": item.price
+                } for item in items
+            ]
+        })
+
+    return {
+        "type": "sold",
         "orders": result
     }
 
