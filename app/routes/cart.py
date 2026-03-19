@@ -41,7 +41,7 @@ def add_multiple_to_cart(
     user_id = request.user_id
     items = request.items
 
-    # Get or create cart
+    # ✅ Get or create cart
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
 
     if not cart:
@@ -52,12 +52,12 @@ def add_multiple_to_cart(
 
     added_items = []
 
+    # ✅ Add / update items
     for item in items:
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
         if not menu:
             raise HTTPException(status_code=404, detail=f"Menu {item.menu_id} not found")
 
-        # Check existing item
         existing_item = db.query(CartItem).filter(
             CartItem.cart_id == cart.id,
             CartItem.menu_id == item.menu_id
@@ -80,10 +80,21 @@ def add_multiple_to_cart(
 
     db.commit()
 
+    # ✅ SUBTOTAL CALCULATION ONLY
+    cart_items = db.query(CartItem).filter(CartItem.cart_id == cart.id).all()
+
+    subtotal = 0
+
+    for item in cart_items:
+        menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
+        subtotal += menu.price * item.quantity
+
+    # ✅ FINAL RESPONSE (NO GST / FEES)
     return {
         "message": "Items added to cart",
         "cart_id": cart.id,
-        "items": added_items
+        "items": added_items,
+        "subtotal": round(subtotal, 2)
     }
 
 # ----------------------------------- GET -----------------------------------------------
@@ -199,34 +210,48 @@ def remove_cart_item(item_id: int, db: Session = Depends(get_db)):
 
 # -----------------------------------------------CHECKOUT---------------------------------
 
+class CheckoutRequest(BaseModel):
+    user_id: int
+    payment_method: str
+
+    total_amount: float
+    gst_food: float
+    platform_fee: float
+    gst_platform: float
+    processing_fee: float
+    payable_amount: float
 
 
-@router.post("/cart/checkout")
+@router.post("/checkout")
 def checkout(
-    user_id: int,
-    payment_method: str,  
+    request: CheckoutRequest,
     db: Session = Depends(get_db)
 ):
+    user_id = request.user_id
+    payment_method = request.payment_method
 
+    # ✅ Validate payment method
     valid_methods = ["cod", "card", "upi"]
-
     if payment_method not in valid_methods:
         raise HTTPException(status_code=400, detail="Invalid payment method")
 
+    # ✅ Get cart
     cart = db.query(Cart).filter(Cart.user_id == user_id).first()
-
     if not cart:
         raise HTTPException(status_code=400, detail="Cart not found")
 
+    # ✅ Get cart items
     items = db.query(CartItem).filter(CartItem.cart_id == cart.id).all()
-
     if not items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
+    # ✅ Group items by shop
     shop_map = {}
-
     for item in items:
         menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
+
+        if not menu:
+            raise HTTPException(status_code=404, detail=f"Menu {item.menu_id} not found")
 
         shop_id = menu.shop_id
 
@@ -237,17 +262,23 @@ def checkout(
 
     orders_response = []
 
+    # ✅ Create orders (per shop)
     for shop_id, item_list in shop_map.items():
-
-        total = 0
 
         order = Order(
             user_id=user_id,
             shop_id=shop_id,
-            total_amount=0,
-            payable_amount=0,
-            payment_method=payment_method,  
-            payment_status="pending",       
+
+            # 🔥 Store frontend values (NO CALCULATION)
+            total_amount=request.total_amount,
+            gst_food=request.gst_food,
+            platform_fee=request.platform_fee,
+            gst_platform=request.gst_platform,
+            processing_fee=request.processing_fee,
+            payable_amount=request.payable_amount,
+
+            payment_method=payment_method,
+            payment_status="pending",
             status="pending"
         )
 
@@ -257,52 +288,46 @@ def checkout(
 
         order_items_data = []
 
+        # ✅ Save order items
         for item, menu in item_list:
-
-            item_total = menu.price * item.quantity
-            total += item_total
-
             order_item = OrderItem(
                 order_id=order.id,
                 menu_id=menu.id,
                 quantity=item.quantity,
                 price=menu.price
             )
-
             db.add(order_item)
 
             order_items_data.append({
                 "menu_id": menu.id,
                 "menu_name": menu.name,
                 "quantity": item.quantity,
-                "price": menu.price,
-                "total": item_total
+                "price": menu.price
             })
 
-        order.total_amount = total
-        order.payable_amount = total
-
-        
+        # ✅ Payment status
         if payment_method == "cod":
             order.payment_status = "pending"
         else:
-            order.payment_status = "paid"   
+            order.payment_status = "paid"
 
         db.commit()
 
         orders_response.append({
             "order_id": order.id,
             "shop_id": shop_id,
-            "total_amount": total,
+            "total_amount": request.total_amount,
+            "payable_amount": request.payable_amount,
             "payment_method": payment_method,
             "payment_status": order.payment_status,
             "items": order_items_data
         })
 
+    # ✅ Clear cart
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
     db.commit()
 
     return {
-        "message": "Orders placed successfully (multi-shop)",
+        "message": "Orders placed successfully",
         "orders": orders_response
     }
