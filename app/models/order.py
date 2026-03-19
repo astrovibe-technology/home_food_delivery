@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, String, DateTime
+from sqlalchemy import Column, Integer, ForeignKey, String, DateTime, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database.db import Base
@@ -14,6 +14,10 @@ class Order(Base):
     total_amount = Column(Integer, default=0)
     discount_amount = Column(Integer, default=0)
     payable_amount = Column(Integer)
+    gst_food = Column(Float, default=0)
+    platform_fee = Column(Float, default=0)
+    gst_platform = Column(Float, default=0)
+    processing_fee = Column(Float, default=0)
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     payment_method = Column(String, nullable=True)
