@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
@@ -6,6 +6,8 @@ from pydantic import BaseModel
 
 from database.db import SessionLocal
 from models.cart import Cart
+from models.shop import Shop
+from datetime import date,timedelta
 from models.cooking_dish import CookingDish
 from models.cartitem import CartItem
 from models.menu import Menu
@@ -329,5 +331,100 @@ def checkout(
 
     return {
         "message": "Orders placed successfully",
+        "orders": orders_response
+    }
+
+
+# -------------------------------------------GET------------------------------------
+
+
+@router.get("/checkout/orders")
+def get_checkout_like_orders(
+    user_id: int,
+    start_date: date = Query(None),
+    end_date: date = Query(None),
+    db: Session = Depends(get_db)
+):
+
+    query = db.query(Order).filter(Order.user_id == user_id)
+
+    # ✅ CASE 1: only start_date (single day)
+    if start_date and not end_date:
+        query = query.filter(
+            Order.created_at >= start_date,
+            Order.created_at < (start_date + timedelta(days=1))
+        )
+
+    # ✅ CASE 2: only end_date
+    elif end_date and not start_date:
+        query = query.filter(
+            Order.created_at < (end_date + timedelta(days=1))
+        )
+
+    # ✅ CASE 3: both start_date & end_date
+    elif start_date and end_date:
+        query = query.filter(
+            Order.created_at >= start_date,
+            Order.created_at < (end_date + timedelta(days=1))
+        )
+
+    orders = query.all()
+
+    if not orders:
+        return {"message": "No orders found"}
+
+    shop_map = {}
+    for order in orders:
+        if order.shop_id not in shop_map:
+            shop_map[order.shop_id] = []
+        shop_map[order.shop_id].append(order)
+
+    orders_response = []
+
+    for shop_id, order_list in shop_map.items():
+
+        shop = db.query(Shop).filter(Shop.id == shop_id).first()
+
+        for order in order_list:
+
+            items = db.query(OrderItem).filter(
+                OrderItem.order_id == order.id
+            ).all()
+
+            order_items_data = []
+
+            for item in items:
+                menu = db.query(Menu).filter(Menu.id == item.menu_id).first()
+
+                order_items_data.append({
+                    "menu_id": item.menu_id,
+                    "menu_name": menu.name if menu else None,
+                    "quantity": item.quantity,
+                    "price": item.price
+                })
+
+            orders_response.append({
+                "order_id": order.id,
+                "shop_id": shop_id,
+                "shop_name": shop.shop_name if shop else None,
+
+                "total_amount": order.total_amount,
+                "gst_food": order.gst_food,
+                "platform_fee": order.platform_fee,
+                "gst_platform": order.gst_platform,
+                "processing_fee": order.processing_fee,
+                "payable_amount": order.payable_amount,
+
+                "payment_method": order.payment_method,
+                "payment_status": order.payment_status,
+                "status": order.status,
+
+                "created_at": order.created_at,
+                "items": order_items_data
+            })
+
+    return {
+        "message": "Orders fetched successfully",
+        "total_orders": len(orders_response),
         "orders": orders_response
     }
