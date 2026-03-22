@@ -72,14 +72,14 @@ def update_order_status(order_id: int, new_status: str, db: Session = Depends(ge
 @router.get("/orders/bought")
 def get_bought_orders(
     user_id: int,
-    status: str = None,   # 👈 NEW
+    status: str = None,
     db: Session = Depends(get_db)
 ):
 
     query = db.query(Order).filter(Order.user_id == user_id)
 
     if status:
-        query = query.filter(Order.status == status.lower())  # 👈 FILTER
+        query = query.filter(Order.status == status.lower())
 
     orders = query.all()
 
@@ -98,6 +98,7 @@ def get_bought_orders(
             "payment_method": order.payment_method,
             "payment_status": order.payment_status,
             "status": order.status,
+            "order_date": order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else None,  # 👈 NEW
             "items": [
                 {
                     "menu_id": item.menu_id,
@@ -117,14 +118,14 @@ def get_bought_orders(
 @router.get("/orders/sold")
 def get_sold_orders(
     shop_id: int,
-    status: str = None,   # 👈 NEW
+    status: str = None,
     db: Session = Depends(get_db)
 ):
 
     query = db.query(Order).filter(Order.shop_id == shop_id)
 
     if status:
-        query = query.filter(Order.status == status.lower())  # 👈 FILTER
+        query = query.filter(Order.status == status.lower())
 
     orders = query.all()
 
@@ -143,6 +144,7 @@ def get_sold_orders(
             "payment_method": order.payment_method,
             "payment_status": order.payment_status,
             "status": order.status,
+            "order_date": order.created_at.strftime("%Y-%m-%d %H:%M:%S") if order.created_at else None,  # 👈 NEW
             "items": [
                 {
                     "menu_id": item.menu_id,
