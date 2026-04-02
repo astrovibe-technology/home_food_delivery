@@ -20,6 +20,7 @@ from models.type import Type
 from models.timings import Timing
 from models.delivery_incentive import DeliveryIncentive
 from models.location import UserLocation
+from models.issue import Issue
 
 # Routers
 from routes.user import router as auth_router
@@ -39,6 +40,7 @@ from routes.order_status import router as order_status_router
 from routes.admin import router as admin_router
 from routes.location import router as location_router
 from routes.dashboard import router as dashboard_router
+from routes.issue import router as issue_router
 
 
 
@@ -64,3 +66,4 @@ app.include_router(order_status_router)
 app.include_router( delivery_incentives_router)
 app.include_router(location_router)
 app.include_router(dashboard_router)
+app.include_router(issue_router)
