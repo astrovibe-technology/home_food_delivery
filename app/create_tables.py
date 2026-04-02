@@ -24,6 +24,7 @@ from models.timings import Timing
 from models.delivery_incentive import DeliveryIncentive
 from models.location import UserLocation
 from models.activity import UserActivity
+from models.issue import Issue
 
 
 Base.metadata.create_all(bind=engine)
