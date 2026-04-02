@@ -19,6 +19,7 @@ class User(Base):
     is_fake_mail = Column(Boolean, default=False)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    incentives = Column(Float, default=0)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
