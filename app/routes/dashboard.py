@@ -19,7 +19,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 
-@router.get("/orders/{order_id}")
+@router.get("/orders/{order_id}", operation_id="get_order_by_id")
 def get_order(order_id: int, db: Session = Depends(get_db)):
 
     order = db.query(Order).filter(Order.id == order_id).first()
@@ -40,10 +40,6 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
         "restaurant_id": order.restaurant_id,
         "shop_id": order.shop_id,
 
-        # "razorpay_order_id": order.razorpay_order_id,
-        # "razorpay_payment_id": order.razorpay_payment_id,
-        # "razorpay_signature": order.razorpay_signature,
-
         "payment_status": order.payment_status,
         "payment_method": order.payment_method,
 
@@ -52,7 +48,6 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
         "gst_platform": order.gst_platform,
         "processing_fee": order.processing_fee
     }
-
 
 # ----------------------------- user search---------------------------------------------------
 
