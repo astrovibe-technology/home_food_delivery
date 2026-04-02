@@ -10,3 +10,5 @@ class Incentive(Base):
     amount = Column(Integer, nullable=False)
     reason = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    status = Column(String, default="pending") 
