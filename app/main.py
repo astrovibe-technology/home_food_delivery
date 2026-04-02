@@ -38,6 +38,7 @@ from routes.delivery_incentives import router as delivery_incentives_router
 from routes.order_status import router as order_status_router
 from routes.admin import router as admin_router
 from routes.location import router as location_router
+from routes.dashboard import router as dashboard_router
 
 
 
@@ -62,3 +63,4 @@ app.include_router(orderrouter)
 app.include_router(order_status_router)
 app.include_router( delivery_incentives_router)
 app.include_router(location_router)
+app.include_router(dashboard_router)
