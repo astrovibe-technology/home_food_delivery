@@ -23,6 +23,7 @@ from models.type import Type
 from models.timings import Timing
 from models.delivery_incentive import DeliveryIncentive
 from models.location import UserLocation
+from models.activity import UserActivity
 
 
 Base.metadata.create_all(bind=engine)
