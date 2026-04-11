@@ -224,6 +224,10 @@ def create_travel_dish(
     description: str = Form(...),
     price: int = Form(...),
 
+    # ✅ NEW FIELDS
+    delivery_datetime: str = Form(...),
+    last_order_time: str = Form(...),
+
     travel_type: str = Form(...),
     train_name: str = Form(None),
     train_number: str = Form(None),
@@ -237,12 +241,12 @@ def create_travel_dish(
     db: Session = Depends(get_db)
 ):
 
-    # shop check
+    # ✅ shop check
     shop = check_shop_approved(db, user_id)
 
     certificate_path = None
 
-    # halal validation
+    # ✅ halal validation
     if is_halal:
         if not halal_certificate:
             raise HTTPException(
@@ -259,8 +263,13 @@ def create_travel_dish(
 
         certificate_path = file_path
 
+    # ✅ convert datetime
+    delivery_dt = parse_datetime(delivery_datetime)
+    last_order_dt = parse_datetime(last_order_time)
+
     travel_type = travel_type.upper()
 
+    # ✅ travel validations
     if travel_type == "TRAIN":
         if not train_name or not train_number:
             raise HTTPException(
@@ -275,6 +284,7 @@ def create_travel_dish(
                 detail="Bus number required for BUS"
             )
 
+    # ✅ save dish
     dish = CookingDish(
         user_id=user_id,
         restaurant_id=shop.id,
@@ -284,6 +294,11 @@ def create_travel_dish(
         halal_certificate=certificate_path,
         description=description,
         price=price,
+
+        # ✅ NEW FIELDS SAVED
+        delivery_datetime=delivery_dt,
+        last_order_time=last_order_dt,
+
         travel_type=travel_type,
         train_name=train_name,
         train_number=train_number,
@@ -291,6 +306,7 @@ def create_travel_dish(
         route=route,
         bogie_number=bogie_number,
         seat_number=seat_number,
+
         dish_type="TRAVEL",
         is_published=True
     )
