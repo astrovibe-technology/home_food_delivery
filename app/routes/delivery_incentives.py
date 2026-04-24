@@ -1,25 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException
-from datetime import datetime, timedelta
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from database.db import SessionLocal
+from datetime import datetime, timedelta
+
 from database.db import get_db
 from models.delivery_incentive import DeliveryIncentive
 
+router = APIRouter(prefix="/delivery_incentive", tags=["Delivery Incentive"])
 
-router = APIRouter(prefix="/delivery_incentive", tags=["delivery_incentive"])
 
-
+# 🔥 UPDATE INCENTIVE FUNCTION
 def update_incentive(db, user_id):
+
+    print("🔥 INCENTIVE CALLED FOR USER:", user_id)
 
     today = datetime.utcnow().date()
 
-    # Get Monday (week start)
+    # ✅ Week start (Monday)
     week_start = today - timedelta(days=today.weekday())
 
-    # Get month/year
     month = today.month
     year = today.year
 
+    # ✅ Check existing record
     inc = db.query(DeliveryIncentive).filter(
         DeliveryIncentive.user_id == user_id,
         DeliveryIncentive.week_start == week_start,
@@ -27,16 +29,31 @@ def update_incentive(db, user_id):
         DeliveryIncentive.year == year
     ).first()
 
+    # ✅ Create new record if not exists
     if not inc:
         inc = DeliveryIncentive(
             user_id=user_id,
             week_start=week_start,
             month=month,
-            year=year
+            year=year,
+            week_orders=0,
+            month_orders=0,
+            lifetime_orders=0
         )
         db.add(inc)
+        db.commit()
+        db.refresh(inc)
 
-    # Increase counts
+    # 🔥 RESET LOGIC
+    if inc.week_start != week_start:
+        inc.week_orders = 0
+        inc.week_start = week_start
+
+    if inc.month != month:
+        inc.month_orders = 0
+        inc.month = month
+
+    # ✅ Increment counts
     inc.week_orders += 1
     inc.month_orders += 1
     inc.lifetime_orders += 1
@@ -44,8 +61,7 @@ def update_incentive(db, user_id):
     db.commit()
 
 
-
-
+# 🔥 GET INCENTIVE API (UPDATED WITH REWARD AMOUNT)
 @router.get("/incentive/{user_id}")
 def get_incentive(user_id: int, db: Session = Depends(get_db)):
 
@@ -56,15 +72,12 @@ def get_incentive(user_id: int, db: Session = Depends(get_db)):
     if not inc:
         return {"message": "No incentive data"}
 
-    # Weekly reward
-    weekly_reward = 100 if inc.week_orders >= 40 else 0
+    # ✅ Reward Logic
+    weekly_reward = "₹100 Earned" if inc.week_orders >= 40 else "₹0"
+    monthly_reward = "₹500 Earned" if inc.month_orders >= 160 else "₹0"
+    lifetime_reward = "₹1,00,000 Earned" if inc.lifetime_orders >= 40000 else "In progress"
 
-    # Monthly reward
-    monthly_reward = 500 if inc.month_orders >= 160 else 0
-
-    # Lifetime progress
     lifetime_goal = 40000
-    lifetime_progress = inc.lifetime_orders
 
     return {
         "weekly": {
@@ -80,8 +93,8 @@ def get_incentive(user_id: int, db: Session = Depends(get_db)):
             "achieved": inc.month_orders >= 160
         },
         "lifetime": {
-            "progress": f"{lifetime_progress} / {lifetime_goal}",
-            "remaining": lifetime_goal - lifetime_progress,
-            "reward": "Hamper worth ₹1,00,000" if lifetime_progress >= lifetime_goal else "In progress"
+            "progress": f"{inc.lifetime_orders} / {lifetime_goal}",
+            "remaining": lifetime_goal - inc.lifetime_orders,
+            "reward": lifetime_reward
         }
     }
