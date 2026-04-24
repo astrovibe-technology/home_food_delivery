@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from database.db import SessionLocal
 from models.cart import Cart
 from models.shop import Shop
+from routes.delivery_incentives import update_incentive
 from datetime import date,timedelta
 from models.cooking_dish import CookingDish
 from models.cartitem import CartItem
@@ -202,12 +203,20 @@ def update_cart_item(
 @router.delete("/item/{item_id}")
 def remove_cart_item(item_id: int, db: Session = Depends(get_db)):
     item = db.query(CartItem).filter(CartItem.id == item_id).first()
+
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
     db.delete(item)
     db.commit()
+
     return {"message": "Item removed from cart"}
+
+
+
+@router.get("/items")
+def get_items(db: Session = Depends(get_db)):
+    return db.query(CartItem).all()
 
 
 # -----------------------------------------------CHECKOUT---------------------------------
@@ -324,6 +333,9 @@ def checkout(
             "payment_status": order.payment_status,
             "items": order_items_data
         })
+
+
+    update_incentive(db, user_id)
 
     # ✅ Clear cart
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
