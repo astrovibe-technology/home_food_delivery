@@ -15,6 +15,8 @@ class CookingDish(Base):
     food_type = Column(String)  # VEG / NON_VEG
     is_halal = Column(Boolean, default=False)
     halal_certificate = Column(String, nullable=True)
+    diet_tags = Column(String, nullable=True)
+
 
     description = Column(String)
     price = Column(Integer)
@@ -26,6 +28,13 @@ class CookingDish(Base):
     building_name = Column(String, nullable=True)
     house_number = Column(String, nullable=True)
     floor_number = Column(String, nullable=True)
+
+
+
+    address_line = Column(String, nullable=True)
+    landmark = Column(String, nullable=True)
+    area_name = Column(String, nullable=True)
+    pincode = Column(String, nullable=True)
 
     # Travel
     travel_type = Column(String, nullable=True)  # TRAIN / BUS
