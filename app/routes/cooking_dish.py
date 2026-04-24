@@ -65,14 +65,20 @@ def create_society_dish(
     title: str = Form(...),
     food_type: str = Form(...),
     is_halal: bool = Form(False),
+
+    # ✅ diet tags
+    is_sugar_free: bool = Form(False),
+    is_spicy: bool = Form(False),
+
     description: str = Form(...),
     price: int = Form(...),
     delivery_datetime: str = Form(...),
     last_order_time: str = Form(...),
 
-    building_name: str = Form(...),
-    house_number: str = Form(...),
-    floor_number: str = Form(...),
+    address_line: str = Form(...),
+    landmark: str = Form(None),
+    area_name: str = Form(...),
+    pincode: str = Form(...),
 
     halal_certificate: UploadFile = File(None),
 
@@ -84,11 +90,12 @@ def create_society_dish(
 
     certificate_path = None
 
-    if food_type == "NON_VEG" and is_halal:
+    # ✅ EXACT SAME AS TRAVEL
+    if is_halal:
         if not halal_certificate:
             raise HTTPException(
                 status_code=400,
-                detail="Halal certificate image is required"
+                detail="Halal certificate image is required for halal dishes"
             )
 
         ext = halal_certificate.filename.split(".")[-1]
@@ -100,12 +107,23 @@ def create_society_dish(
 
         certificate_path = file_path
 
+    # ✅ datetime
     delivery_dt = parse_datetime(delivery_datetime)
     last_order_dt = parse_datetime(last_order_time)
 
+    # ✅ diet_tags
+    tags = []
+    if is_sugar_free:
+        tags.append("SUGAR_FREE")
+    if is_spicy:
+        tags.append("SPICY")
+
+    diet_tags = ",".join(tags) if tags else None
+
+    # ✅ save
     dish = CookingDish(
         user_id=user_id,
-        restaurant_id=shop.id,   # ✅ IMPORTANT CHANGE
+        restaurant_id=shop.id,
         title=title,
         food_type=food_type,
         is_halal=is_halal,
@@ -114,9 +132,11 @@ def create_society_dish(
         price=price,
         delivery_datetime=delivery_dt,
         last_order_time=last_order_dt,
-        building_name=building_name,
-        house_number=house_number,
-        floor_number=floor_number,
+        diet_tags=diet_tags,
+        address_line=address_line,
+        landmark=landmark,
+        area_name=area_name,
+        pincode=pincode,
         dish_type="SOCIETY",
         is_published=True
     )
@@ -127,10 +147,9 @@ def create_society_dish(
 
     return {
         "message": "Dish published successfully",
-        "dish_id": dish.id
+        "dish_id": dish.id,
+        "diet_tags": dish.diet_tags
     }
-
-
 
 
 
@@ -144,6 +163,10 @@ def get_society_dishes(db: Session = Depends(get_db)):
     result = []
 
     for dish in dishes:
+
+        # ✅ split diet_tags
+        tags = dish.diet_tags.split(",") if dish.diet_tags else []
+
         result.append({
             "dish_id": dish.id,
             "user_id": dish.user_id,
@@ -155,9 +178,18 @@ def get_society_dishes(db: Session = Depends(get_db)):
             "price": dish.price,
             "delivery_datetime": dish.delivery_datetime,
             "last_order_time": dish.last_order_time,
-            "building_name": dish.building_name,
-            "house_number": dish.house_number,
-            "floor_number": dish.floor_number,
+
+            # ✅ diet fields
+            "is_sugar_free": "SUGAR_FREE" in tags,
+            "is_spicy": "SPICY" in tags,
+            "diet_tags": tags,   # optional (list ah return)
+
+            # location
+            "address_line": dish.address_line,
+            "landmark": dish.landmark,
+            "area_name": dish.area_name,
+            "pincode": dish.pincode,
+
             "dish_type": dish.dish_type
         })
 
@@ -165,8 +197,6 @@ def get_society_dishes(db: Session = Depends(get_db)):
         "total_dishes": len(result),
         "dishes": result
     }
-
-
 
 
 @router.get("/shop/{shop_id}")
@@ -221,10 +251,14 @@ def create_travel_dish(
     title: str = Form(...),
     food_type: str = Form(...),
     is_halal: bool = Form(False),
+
+    # ✅ NEW (only this added)
+    is_sugar_free: bool = Form(False),
+    is_spicy: bool = Form(False),
+
     description: str = Form(...),
     price: int = Form(...),
 
-    # ✅ NEW FIELDS
     delivery_datetime: str = Form(...),
     last_order_time: str = Form(...),
 
@@ -246,7 +280,7 @@ def create_travel_dish(
 
     certificate_path = None
 
-    # ✅ halal validation
+    # ✅ (UNCHANGED halal validation)
     if is_halal:
         if not halal_certificate:
             raise HTTPException(
@@ -263,7 +297,7 @@ def create_travel_dish(
 
         certificate_path = file_path
 
-    # ✅ convert datetime
+    # ✅ datetime
     delivery_dt = parse_datetime(delivery_datetime)
     last_order_dt = parse_datetime(last_order_time)
 
@@ -284,7 +318,16 @@ def create_travel_dish(
                 detail="Bus number required for BUS"
             )
 
-    # ✅ save dish
+    # ✅ NEW (diet_tags மட்டும்)
+    tags = []
+    if is_sugar_free:
+        tags.append("SUGAR_FREE")
+    if is_spicy:
+        tags.append("SPICY")
+
+    diet_tags = ",".join(tags) if tags else None
+
+    # ✅ save
     dish = CookingDish(
         user_id=user_id,
         restaurant_id=shop.id,
@@ -295,7 +338,6 @@ def create_travel_dish(
         description=description,
         price=price,
 
-        # ✅ NEW FIELDS SAVED
         delivery_datetime=delivery_dt,
         last_order_time=last_order_dt,
 
@@ -307,6 +349,9 @@ def create_travel_dish(
         bogie_number=bogie_number,
         seat_number=seat_number,
 
+        # ✅ ONLY THIS NEW FIELD
+        diet_tags=diet_tags,
+
         dish_type="TRAVEL",
         is_published=True
     )
@@ -317,8 +362,62 @@ def create_travel_dish(
 
     return {
         "message": "Travel dish published successfully",
-        "dish_id": dish.id
+        "dish_id": dish.id,
+        "diet_tags": dish.diet_tags
     }
+
+
+
+
+@router.get("/travel/get-all-travel-dishes")
+def get_all_travel_dishes(db: Session = Depends(get_db)):
+
+    dishes = db.query(CookingDish).filter(
+        CookingDish.dish_type == "TRAVEL"
+    ).order_by(CookingDish.id.desc()).all()
+
+    result = []
+
+    for dish in dishes:
+
+        # ✅ split diet_tags
+        tags = dish.diet_tags.split(",") if dish.diet_tags else []
+
+        result.append({
+            "id": dish.id,
+            "user_id": dish.user_id,
+            "restaurant_id": dish.restaurant_id,
+            "title": dish.title,
+            "food_type": dish.food_type,
+            "is_halal": dish.is_halal,
+            "description": dish.description,
+            "price": dish.price,
+            "delivery_datetime": dish.delivery_datetime,
+            "last_order_time": dish.last_order_time,
+
+            # ✅ diet fields (NEW)
+            "is_sugar_free": "SUGAR_FREE" in tags,
+            "is_spicy": "SPICY" in tags,
+            "diet_tags": tags,   # optional
+
+            # Travel fields
+            "travel_type": dish.travel_type,
+            "train_name": dish.train_name,
+            "train_number": dish.train_number,
+            "bus_number": dish.bus_number,
+            "route": dish.route,
+            "bogie_number": dish.bogie_number,
+            "seat_number": dish.seat_number,
+
+            "dish_type": dish.dish_type
+        })
+
+    return {
+        "total_dishes": len(result),
+        "dishes": result
+    }
+
+
 
 
 
@@ -364,3 +463,119 @@ def get_travel_shop_items(
         "total_items": len(result),
         "items": result
     }
+
+
+
+@router.get("/search")
+def search_dishes(
+    area_name: str = None,
+    pincode: str = None,
+    address_line: str = None,   # ✅ NEW
+    train_number: str = None,
+    db: Session = Depends(get_db)
+):
+
+    # ---------------- TRAVEL SEARCH ----------------
+    if train_number:
+
+        travel_query = db.query(CookingDish).filter(
+            CookingDish.dish_type == "TRAVEL",
+            CookingDish.train_number == train_number
+        )
+
+        travel_dishes = travel_query.all()
+
+        if not travel_dishes:
+            raise HTTPException(
+                status_code=404,
+                detail="No travel data found for given train number"
+            )
+
+        result = []
+        for dish in travel_dishes:
+
+            shop = db.query(Shop).filter(Shop.id == dish.restaurant_id).first()
+
+            result.append({
+                "id": dish.id,
+                "type": "TRAVEL",
+                "title": dish.title,
+                "price": dish.price,
+                "train_name": dish.train_name,
+                "train_number": dish.train_number,
+                "route": dish.route,
+
+                # ✅ ADD
+                "kitchen_id": dish.restaurant_id,
+                "kitchen_name": shop.shop_name if shop else None
+            })
+
+        return {
+            "type": "TRAVEL",
+            "total": len(result),
+            "data": result
+        }
+
+    # ---------------- SOCIETY SEARCH ----------------
+    elif area_name or pincode or address_line:
+
+        society_query = db.query(CookingDish).filter(
+            CookingDish.dish_type == "SOCIETY"
+        )
+
+        if area_name:
+            society_query = society_query.filter(
+                CookingDish.area_name.ilike(f"%{area_name}%")
+            )
+
+        if pincode:
+            society_query = society_query.filter(
+                CookingDish.pincode == pincode
+            )
+
+        # ✅ NEW FILTER
+        if address_line:
+            society_query = society_query.filter(
+                CookingDish.address_line.ilike(f"%{address_line}%")
+            )
+
+        society_dishes = society_query.all()
+
+        if not society_dishes:
+            raise HTTPException(
+                status_code=404,
+                detail="No society data found"
+            )
+
+        result = []
+        for dish in society_dishes:
+
+            shop = db.query(Shop).filter(Shop.id == dish.restaurant_id).first()
+
+            result.append({
+                "id": dish.id,
+                "type": "SOCIETY",
+                "title": dish.title,
+                "price": dish.price,
+                "area_name": dish.area_name,
+                "pincode": dish.pincode,
+                "address_line": dish.address_line,
+                "landmark": dish.landmark,
+
+                # ✅ ADD
+                "kitchen_id": dish.restaurant_id,
+                "kitchen_name": shop.shop_name if shop else None
+            })
+
+        return {
+            "type": "SOCIETY",
+            "total": len(result),
+            "data": result
+        }
+
+    # ---------------- INVALID INPUT ----------------
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide area_name or pincode or address_line or train_number"
+        )
